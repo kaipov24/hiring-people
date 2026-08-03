@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+api/node_modules/
+web/node_modules/
+
+# Build output
+dist/
+build/
+coverage/
+web/dist/
+api/dist/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+secrets/*
+!secrets/.gitkeep
+!secrets/*.example
+*.pem
+*.key
+
+# Runtime uploads and logs
+api/uploads/*
+!api/uploads/.gitkeep
+*.log
+logs/
+
+# Docker and local tooling
+.docker/
+.cache/
+.tmp/
+tmp/
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
