@@ -31,7 +31,7 @@ export const cvUpload = multer({
   },
   fileFilter: (_req, file, callback) => {
     if (!allowedMimeTypes.has(file.mimetype)) {
-      callback(new Error("CV must be a PDF, DOC, or DOCX file"));
+      callback(new Error("Резюме должно быть файлом PDF, DOC или DOCX"));
       return;
     }
 

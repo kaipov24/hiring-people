@@ -24,6 +24,13 @@ const profileSchema = z.object({
   skills: z.array(z.string().trim().min(1).max(80)).max(50).default([]),
   languages: z.array(z.string().trim().min(1).max(80)).max(20).default([]),
   accessibilityPreferences: z.string().trim().max(2000).optional(),
+  portfolio: z.string().trim().max(300).optional(),
+  availability: z.string().trim().max(120).optional(),
+  contacts: z.object({
+    email: z.string().trim().email().max(160).optional(),
+    messenger: z.string().trim().max(160).optional(),
+    messengerType: z.enum(["telegram", "whatsapp"]).default("telegram")
+  }).optional(),
   location: z.string().trim().max(160).optional()
 });
 

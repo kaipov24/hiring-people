@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 
-import { login, me, register } from "../controllers/auth.controller.js";
+import { forgotPassword, login, me, register, resendVerification, resetPassword, updateMe, verifyEmail } from "../controllers/auth.controller.js";
 import { authenticate } from "../middleware/auth.middleware.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { validateBody } from "../utils/validation.js";
@@ -23,8 +23,31 @@ const loginSchema = z.object({
   password
 });
 
+const emailSchema = z.object({
+  email
+});
+
+const verifyEmailSchema = z.object({
+  token: z.string().trim().min(1)
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().trim().min(1),
+  password
+});
+
+const updateMeSchema = z.object({
+  name: z.string().trim().min(1).max(120)
+});
+
 router.post("/register", validateBody(registerSchema), asyncHandler(register));
 router.post("/login", validateBody(loginSchema), asyncHandler(login));
+router.post("/verify-email", validateBody(verifyEmailSchema), asyncHandler(verifyEmail));
+router.get("/verify-email", asyncHandler(verifyEmail));
+router.post("/resend-verification", validateBody(emailSchema), asyncHandler(resendVerification));
+router.post("/forgot-password", validateBody(emailSchema), asyncHandler(forgotPassword));
+router.post("/reset-password", validateBody(resetPasswordSchema), asyncHandler(resetPassword));
 router.get("/me", authenticate, asyncHandler(me));
+router.patch("/me", authenticate, validateBody(updateMeSchema), asyncHandler(updateMe));
 
 export default router;

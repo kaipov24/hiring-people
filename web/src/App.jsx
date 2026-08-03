@@ -1,58 +1,77 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
-const authRoles = ["candidate", "hiring_manager"];
+const YEAR = new Date().getFullYear();
 const statuses = ["Viewed", "Contacted", "Hired"];
 
-const emptyAuthForm = {
-  name: "",
-  email: "",
-  password: "",
-  role: "candidate"
+const statusLabels = {
+  Viewed: "Просмотрен",
+  Contacted: "Связались",
+  Hired: "Нанят"
 };
 
+const emptyAuthForm = { name: "", email: "", password: "", role: "candidate" };
+const emptyResetForm = { email: "", token: "", password: "" };
+const emptyAccountForm = { name: "" };
 const emptyProfileForm = {
   headline: "",
   summary: "",
   skills: "",
   languages: "",
   accessibilityPreferences: "",
-  location: ""
+  location: "",
+  portfolio: "",
+  availability: "Готов(а) к предложениям",
+  contactEmail: "",
+  messengerType: "telegram",
+  messenger: ""
 };
-
 const emptyCompanyForm = {
   name: "",
   description: "",
   website: "",
   accessibilityCommitments: ""
 };
+const emptyFilters = { query: "", location: "", skills: "", languages: "" };
 
-const emptyFilters = {
-  location: "",
-  skills: "",
-  languages: ""
-};
+const sampleCandidates = [
+  {
+    name: "Айжан М.",
+    headline: "UX-исследователь доступных сервисов",
+    location: "Бишкек",
+    skills: ["исследования", "интервью", "аналитика"],
+    languages: ["кыргызча", "русский", "English"]
+  },
+  {
+    name: "Тимур К.",
+    headline: "Frontend-разработчик",
+    location: "Удаленно",
+    skills: ["React", "TypeScript", "доступность"],
+    languages: ["русский", "English"]
+  },
+  {
+    name: "Салтанат Р.",
+    headline: "HR-координатор инклюзивного найма",
+    location: "Ош",
+    skills: ["найм", "адаптация", "документы"],
+    languages: ["кыргызча", "русский"]
+  }
+];
 
-const toList = (value) =>
-  value
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
+const toList = (value) => value.split(",").map((item) => item.trim()).filter(Boolean);
+const authHeaders = (token) => ({ Authorization: `Bearer ${token}` });
+const contactInfo = (profile) => ({
+  email: profile?.contacts?.email || profile?.user?.email || "contact@inclusive-hire.local",
+  messengerType: profile?.contacts?.messengerType || "telegram",
+  messenger: profile?.contacts?.messenger || "@inclusive_hire"
+});
 
 const request = async (path, options = {}) => {
   const response = await fetch(`${API_BASE_URL}${path}`, options);
   const data = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new Error(data.error?.message ?? "Request failed");
-  }
-
+  if (!response.ok) throw new Error(data.error?.message ?? "Запрос не выполнен");
   return data;
 };
-
-const authHeaders = (token) => ({
-  Authorization: `Bearer ${token}`
-});
 
 const readStoredSession = () => {
   try {
@@ -64,17 +83,44 @@ const readStoredSession = () => {
   }
 };
 
+const readAuthLink = () => {
+  const hash = window.location.hash;
+  const [route, query = ""] = hash.slice(1).split("?");
+  const params = new URLSearchParams(query || window.location.search);
+  const token = params.get("token") ?? "";
+
+  if (route === "reset-password" && token) return { mode: "reset", token };
+  if (route === "verify-email" && token) return { mode: "verify", token };
+  return null;
+};
+
+const readCandidateRoute = () => {
+  const pathMatch = window.location.pathname.match(/^\/candidates\/([^/]+)$/);
+  if (pathMatch) return decodeURIComponent(pathMatch[1]);
+
+  const route = window.location.hash.slice(1).split("?")[0];
+  const match = route.match(/^candidates\/([^/]+)$/);
+  return match ? decodeURIComponent(match[1]) : "";
+};
+
 function App() {
   const [session, setSession] = useState(readStoredSession);
-  const [authMode, setAuthMode] = useState("login");
+  const [page, setPageState] = useState("home");
   const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState("login");
   const [authForm, setAuthForm] = useState(emptyAuthForm);
-  const [message, setMessage] = useState("");
-  const [hiredCompanies, setHiredCompanies] = useState([]);
+  const [authError, setAuthError] = useState("");
+  const [authNotice, setAuthNotice] = useState("");
+  const [verificationToken, setVerificationToken] = useState("");
+  const [resetForm, setResetForm] = useState(emptyResetForm);
+  const [formNotice, setFormNotice] = useState("");
+  const [accountForm, setAccountForm] = useState(emptyAccountForm);
   const [profileForm, setProfileForm] = useState(emptyProfileForm);
   const [candidateProfile, setCandidateProfile] = useState(null);
   const [profileViews, setProfileViews] = useState([]);
   const [companyForm, setCompanyForm] = useState(emptyCompanyForm);
+  const [companyProfile, setCompanyProfile] = useState(null);
+  const [companyEditing, setCompanyEditing] = useState(true);
   const [filters, setFilters] = useState(emptyFilters);
   const [employees, setEmployees] = useState([]);
   const [selectedProfile, setSelectedProfile] = useState(null);
@@ -82,31 +128,7 @@ function App() {
   const user = session?.user;
   const token = session?.token;
   const isCandidate = user?.role === "candidate";
-  const isHiringManager = user?.role === "hiring_manager";
-
-  useEffect(() => {
-    if (session) {
-      window.localStorage.setItem("inclusive-hire-session", JSON.stringify(session));
-      return;
-    }
-
-    window.localStorage.removeItem("inclusive-hire-session");
-  }, [session]);
-
-  useEffect(() => {
-    request("/api/companies/hired")
-      .then((data) => setHiredCompanies(data.companies ?? []))
-      .catch(() => setHiredCompanies([]));
-  }, []);
-
-  useEffect(() => {
-    if (!isHiringManager) {
-      return;
-    }
-
-    loadEmployees();
-  }, [isHiringManager]);
-
+  const isManager = user?.role === "hiring_manager";
   const profileLists = useMemo(
     () => ({
       skills: toList(profileForm.skills),
@@ -115,34 +137,213 @@ function App() {
     [profileForm.skills, profileForm.languages]
   );
 
-  const showAuth = (mode) => {
+  const setPage = (nextPage) => {
+    setPageState(nextPage);
+    window.history.replaceState(null, "", nextPage === "home" ? "/" : `/#${nextPage}`);
+    setSelectedProfile(null);
+    setFormNotice("");
+  };
+
+  useEffect(() => {
+    document.documentElement.lang = "ru";
+    const authLink = readAuthLink();
+    if (!authLink) return;
+
+    if (authLink.mode === "reset") {
+      setResetForm({ ...emptyResetForm, token: authLink.token });
+      setAuthMode("reset");
+      setAuthOpen(true);
+    }
+
+    if (authLink.mode === "verify") {
+      setVerificationToken(authLink.token);
+      setAuthMode("verify");
+      setAuthOpen(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (session) window.localStorage.setItem("inclusive-hire-session", JSON.stringify(session));
+    else window.localStorage.removeItem("inclusive-hire-session");
+  }, [session]);
+
+  useEffect(() => {
+    if (!user) {
+      setPageState("home");
+      return;
+    }
+
+    setAccountForm({ name: user.name ?? "" });
+    setPageState(isManager && readCandidateRoute() ? "candidate" : isManager ? "directory" : "profile");
+  }, [user?.id, user?.role]);
+
+  useEffect(() => {
+    if (!isManager || !token) return;
+
+    const loadCandidateRoute = async () => {
+      const candidateId = readCandidateRoute();
+      if (!candidateId) return;
+
+      try {
+        const data = await request(`/api/candidates/${candidateId}`, { headers: authHeaders(token) });
+        setSelectedProfile(data.candidate);
+        setPageState("candidate");
+      } catch (error) {
+        setFormNotice(error.message);
+        setPage("directory");
+      }
+    };
+
+    loadCandidateRoute();
+    window.addEventListener("hashchange", loadCandidateRoute);
+    window.addEventListener("popstate", loadCandidateRoute);
+    return () => {
+      window.removeEventListener("hashchange", loadCandidateRoute);
+      window.removeEventListener("popstate", loadCandidateRoute);
+    };
+  }, [isManager, token]);
+
+  useEffect(() => {
+    if (!isManager || !token) return;
+    loadEmployees(undefined, filters);
+    request("/api/companies/me", { headers: authHeaders(token) })
+      .then((data) => {
+        const company = data.company;
+        setCompanyProfile(company);
+        setCompanyForm({
+          name: company.name ?? "",
+          description: company.description ?? "",
+          website: company.website ?? "",
+          accessibilityCommitments: (company.accessibilityCommitments ?? []).join(", ")
+        });
+        setCompanyEditing(false);
+      })
+      .catch(() => {
+        setCompanyProfile(null);
+        setCompanyForm(emptyCompanyForm);
+        setCompanyEditing(true);
+      });
+  }, [isManager, token]);
+
+  useEffect(() => {
+    if (!isCandidate || !token) return;
+
+    request("/api/candidates/me", { headers: authHeaders(token) })
+      .then((data) => {
+        const profile = data.candidate;
+        setCandidateProfile(profile);
+        setProfileForm({
+          headline: profile.headline ?? "",
+          summary: profile.summary ?? "",
+          skills: (profile.skills ?? []).join(", "),
+          languages: (profile.languages ?? []).join(", "),
+          accessibilityPreferences: profile.accessibilityPreferences ?? "",
+          location: profile.location ?? "",
+          portfolio: profile.portfolio ?? "",
+          availability: profile.availability ?? "Готов(а) к предложениям",
+          contactEmail: profile.contacts?.email ?? user.email ?? "",
+          messengerType: profile.contacts?.messengerType ?? "telegram",
+          messenger: profile.contacts?.messenger ?? ""
+        });
+      })
+      .catch(() => {
+        setCandidateProfile(null);
+        setProfileForm(emptyProfileForm);
+      });
+  }, [isCandidate, token]);
+
+  const showAuth = (mode, role = "candidate") => {
     setAuthMode(mode);
-    setAuthForm(emptyAuthForm);
-    setMessage("");
+    setAuthForm({ ...emptyAuthForm, role });
+    setAuthError("");
+    setAuthNotice("");
+    setVerificationToken("");
+    setResetForm({ ...emptyResetForm, email: authForm.email });
     setAuthOpen(true);
   };
 
   const submitAuth = async (event) => {
     event.preventDefault();
-    setMessage("");
+    setAuthError("");
 
     try {
       const path = authMode === "login" ? "/api/auth/login" : "/api/auth/register";
-      const payload =
-        authMode === "login"
-          ? { email: authForm.email, password: authForm.password }
-          : authForm;
+      const payload = authMode === "login"
+        ? { email: authForm.email, password: authForm.password }
+        : authForm;
       const data = await request(path, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
 
+      if (data.emailVerificationRequired) {
+        setVerificationToken("");
+        setAuthNotice("Мы отправили ссылку для подтверждения email. Откройте письмо и перейдите по ссылке, чтобы завершить регистрацию.");
+        setAuthMode("verify");
+        return;
+      }
+
       setSession(data);
       setAuthOpen(false);
-      setMessage("Signed in.");
     } catch (error) {
-      setMessage(error.message);
+      setAuthError(error.message);
+    }
+  };
+
+  const verifyEmail = async () => {
+    setAuthError("");
+    setAuthNotice("");
+
+    try {
+      const data = await request("/api/auth/verify-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: verificationToken })
+      });
+      setSession(data);
+      setAuthOpen(false);
+    } catch (error) {
+      setAuthError(error.message);
+    }
+  };
+
+  const requestPasswordReset = async (event) => {
+    event.preventDefault();
+    setAuthError("");
+    setAuthNotice("");
+
+    try {
+      const data = await request("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: resetForm.email })
+      });
+      setAuthNotice("Если такой email зарегистрирован, мы отправили ссылку для установки нового пароля.");
+      setResetForm({ ...resetForm, token: data.passwordResetToken ?? "" });
+    } catch (error) {
+      setAuthError(error.message);
+    }
+  };
+
+  const resetPassword = async (event) => {
+    event.preventDefault();
+    setAuthError("");
+    setAuthNotice("");
+
+    try {
+      const data = await request("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: resetForm.token, password: resetForm.password })
+      });
+      setAuthNotice(data.message);
+      setAuthForm({ ...authForm, email: resetForm.email, password: "" });
+      setAuthMode("login");
+      setResetForm(emptyResetForm);
+      window.history.replaceState(null, "", "#home");
+    } catch (error) {
+      setAuthError(error.message);
     }
   };
 
@@ -152,109 +353,122 @@ function App() {
     setProfileViews([]);
     setEmployees([]);
     setSelectedProfile(null);
-    setMessage("Signed out.");
+    setPage("home");
   };
 
   const saveProfile = async (event) => {
     event.preventDefault();
-    setMessage("");
+    setFormNotice("");
 
     try {
-      const data = await request("/api/candidates/me", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeaders(token)
-        },
-        body: JSON.stringify({
-          ...profileForm,
-          skills: profileLists.skills,
-          languages: profileLists.languages
+      const [accountData, profileData] = await Promise.all([
+        request("/api/auth/me", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", ...authHeaders(token) },
+          body: JSON.stringify(accountForm)
+        }),
+        request("/api/candidates/me", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", ...authHeaders(token) },
+          body: JSON.stringify({
+            ...profileForm,
+            skills: profileLists.skills,
+            languages: profileLists.languages,
+            contacts: {
+              email: profileForm.contactEmail || undefined,
+              messengerType: profileForm.messengerType,
+              messenger: profileForm.messenger || undefined
+            }
+          })
         })
-      });
+      ]);
 
-      setCandidateProfile(data.candidate);
-      setMessage("Profile saved.");
+      setSession({ ...session, user: accountData.user });
+      setCandidateProfile(profileData.candidate);
+      setFormNotice("Профиль сохранен.");
     } catch (error) {
-      setMessage(error.message);
+      setFormNotice(error.message);
     }
   };
 
   const uploadCv = async (event) => {
     event.preventDefault();
-    setMessage("");
-
+    setFormNotice("");
     const file = event.currentTarget.elements.cv.files[0];
     const formData = new FormData();
     formData.append("cv", file);
 
     try {
-      const data = await fetch(`${API_BASE_URL}/api/candidates/me/cv`, {
+      const response = await fetch(`${API_BASE_URL}/api/candidates/me/cv`, {
         method: "POST",
         headers: authHeaders(token),
         body: formData
-      }).then(async (response) => {
-        const body = await response.json();
-
-        if (!response.ok) {
-          throw new Error(body.error?.message ?? "CV upload failed");
-        }
-
-        return body;
       });
-
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error?.message ?? "Резюме не загружено");
       setCandidateProfile(data.candidate);
-      setMessage("CV uploaded.");
+      setFormNotice("Резюме загружено.");
     } catch (error) {
-      setMessage(error.message);
+      setFormNotice(error.message);
     }
   };
 
-  const loadProfileViews = async () => {
-    setMessage("");
+  const downloadCandidateCv = async (profile) => {
+    if (!profile?.cv?.originalName) return;
 
+    const response = await fetch(`${API_BASE_URL}/api/candidates/${profile.id}/cv`, {
+      headers: authHeaders(token)
+    });
+    if (!response.ok) return;
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = profile.cv.originalName;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const loadProfileViews = async () => {
+    setFormNotice("");
     try {
-      const data = await request("/api/candidates/me/views", {
-        headers: authHeaders(token)
-      });
+      const data = await request("/api/candidates/me/views", { headers: authHeaders(token) });
       setProfileViews(data.views ?? []);
     } catch (error) {
-      setMessage(error.message);
+      setFormNotice(error.message);
     }
   };
 
   const saveCompany = async (event) => {
     event.preventDefault();
-    setMessage("");
+    setFormNotice("");
 
     try {
       await request("/api/companies/me", {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeaders(token)
-        },
+        headers: { "Content-Type": "application/json", ...authHeaders(token) },
         body: JSON.stringify({
           ...companyForm,
           accessibilityCommitments: toList(companyForm.accessibilityCommitments)
         })
       });
-      setMessage("Company profile saved.");
-      loadEmployees();
+      const company = await request("/api/companies/me", { headers: authHeaders(token) });
+      setCompanyProfile(company.company);
+      setCompanyEditing(false);
+      loadEmployees(undefined, filters);
     } catch (error) {
-      setMessage(error.message);
+      setFormNotice(error.message);
     }
   };
 
   const loadEmployees = async (event, nextFilters = filters) => {
     event?.preventDefault();
-    setMessage("");
-
     const params = new URLSearchParams();
     Object.entries(nextFilters).forEach(([key, value]) => {
-      if (value.trim()) {
-        params.set(key, value.trim());
-      }
+      if (value.trim()) params.set(key, value.trim());
     });
 
     try {
@@ -262,580 +476,625 @@ function App() {
         headers: authHeaders(token)
       });
       setEmployees(data.candidates ?? []);
-      setSelectedProfile(null);
+      if (page !== "candidate") setSelectedProfile(null);
     } catch (error) {
-      setMessage(error.message);
+      setFormNotice(error.message);
     }
   };
 
   const openEmployeeProfile = async (employee) => {
-    setMessage("");
-
     try {
-      const data = await request(`/api/candidates/${employee.id}`, {
-        headers: authHeaders(token)
-      });
+      const data = await request(`/api/candidates/${employee.id}`, { headers: authHeaders(token) });
       setSelectedProfile(data.candidate);
+      setPageState("candidate");
+      window.history.pushState(null, "", `/candidates/${employee.id}`);
     } catch (error) {
-      setMessage(error.message);
+      setFormNotice(error.message);
     }
   };
 
   const updateStatus = async (candidateId, status) => {
-    setMessage("");
-
     try {
       await request(`/api/candidates/${candidateId}/status`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeaders(token)
-        },
+        headers: { "Content-Type": "application/json", ...authHeaders(token) },
         body: JSON.stringify({ status })
       });
-      setMessage(`Candidate marked ${status}.`);
+      setFormNotice(`Статус: ${statusLabels[status]}`);
     } catch (error) {
-      setMessage(error.message);
+      setFormNotice(error.message);
     }
   };
 
   return (
     <div className="app-shell">
-      <a className="skip-link" href="#main-content">
-        Skip to main content
-      </a>
-
-      <header className="site-header">
-        <a className="brand" href="#main-content" aria-label="inclusive-hire home">
-          inclusive-hire
-        </a>
-        <nav aria-label="Primary navigation">
-          <a href="#directory">Employees</a>
-          <a href="#companies">Hired companies</a>
-          {isCandidate && <a href="#candidate-profile">My profile</a>}
-        </nav>
-        <div className="auth-actions">
-          {user ? (
-            <>
-              <span>{user.name}</span>
-              <button type="button" className="secondary-button" onClick={signOut}>
-                Sign out
-              </button>
-            </>
-          ) : (
-            <>
-              <button type="button" className="secondary-button" onClick={() => showAuth("login")}>
-                Sign in
-              </button>
-              <button type="button" onClick={() => showAuth("register")}>
-                Sign up
-              </button>
-            </>
-          )}
-        </div>
-      </header>
+      <a className="skip-link" href="#main-content">К содержанию</a>
+      <Header
+        user={user}
+        page={page}
+        isCandidate={isCandidate}
+        isManager={isManager}
+        setPage={setPage}
+        showAuth={showAuth}
+        signOut={signOut}
+      />
 
       <main id="main-content">
-        <section className="hero" aria-labelledby="hero-title">
-          <div>
-            <p className="eyebrow">Accessible hiring platform</p>
-            <h1 id="hero-title">Find skilled candidates ready for inclusive teams</h1>
-            <p>
-              Browse employee profiles, filter by skills, languages, and location, then open a
-              full profile to review accessibility preferences and hiring progress.
-            </p>
-            {!user && (
-              <div className="button-row start-row">
-                <button type="button" onClick={() => showAuth("register")}>
-                  Create account
-                </button>
-                <button type="button" className="secondary-button" onClick={() => showAuth("login")}>
-                  Sign in
-                </button>
-              </div>
-            )}
-          </div>
-          <div className="hero-stats" aria-label="Platform highlights">
-            <article>
-              <strong>Profiles</strong>
-              <span>Accessible candidate records with CV support</span>
-            </article>
-            <article>
-              <strong>Filters</strong>
-              <span>Location, languages, and skills</span>
-            </article>
-            <article>
-              <strong>Status</strong>
-              <span>Viewed, Contacted, Hired</span>
-            </article>
-          </div>
-        </section>
-
-        {message && (
-          <p className="status-message" role="status" aria-live="polite">
-            {message}
-          </p>
-        )}
-
-        {isCandidate && (
-          <CandidateProfilePanel
-            candidateProfile={candidateProfile}
-            loadProfileViews={loadProfileViews}
-            profileForm={profileForm}
-            profileLists={profileLists}
-            profileViews={profileViews}
-            saveProfile={saveProfile}
-            setProfileForm={setProfileForm}
-            uploadCv={uploadCv}
-          />
-        )}
-
-        {isHiringManager ? (
-          <EmployeeDirectory
+        {page !== "candidate" && <Hero user={user} isCandidate={isCandidate} isManager={isManager} page={page} showAuth={showAuth} setPage={setPage} />}
+        {!user && <PublicHome />}
+        {isManager && (page === "directory" || page === "candidate") && (
+          <DirectoryPage
+            page={page}
             companyForm={companyForm}
-            employees={employees}
-            filters={filters}
-            loadEmployees={loadEmployees}
-            openEmployeeProfile={openEmployeeProfile}
-            saveCompany={saveCompany}
-            selectedProfile={selectedProfile}
             setCompanyForm={setCompanyForm}
+            saveCompany={saveCompany}
+            companyProfile={companyProfile}
+            companyEditing={companyEditing}
+            setCompanyEditing={setCompanyEditing}
+            filters={filters}
             setFilters={setFilters}
+            loadEmployees={loadEmployees}
+            employees={employees}
+            selectedProfile={selectedProfile}
             setSelectedProfile={setSelectedProfile}
+            openEmployeeProfile={openEmployeeProfile}
+            downloadCandidateCv={downloadCandidateCv}
             updateStatus={updateStatus}
+            setPage={setPage}
           />
-        ) : (
-          <section id="directory" className="directory-preview" aria-labelledby="directory-title">
-            <h2 id="directory-title">Employee directory</h2>
-            <p className="section-copy">
-              Hiring managers can sign in to browse employee cards, filter candidate profiles, and
-              open full profiles.
-            </p>
-          </section>
         )}
-
-        <section id="companies" aria-labelledby="companies-title">
-          <h2 id="companies-title">Companies hiring through inclusive-hire</h2>
-          <div className="company-list" aria-live="polite">
-            {hiredCompanies.length === 0 ? (
-              <p className="empty-state">No hired-company results are available yet.</p>
-            ) : (
-              hiredCompanies.map((company) => (
-                <article key={company.id} className="company-card">
-                  <h3>{company.name}</h3>
-                  <p>{company.description}</p>
-                  <p className="metric">{company.hiredCandidateCount} candidate hires</p>
-                </article>
-              ))
-            )}
-          </div>
-        </section>
+        {isCandidate && page === "profile" && (
+          <ProfilePage
+            user={user}
+            accountForm={accountForm}
+            setAccountForm={setAccountForm}
+            profileForm={profileForm}
+            setProfileForm={setProfileForm}
+            profileLists={profileLists}
+            candidateProfile={candidateProfile}
+            saveProfile={saveProfile}
+            uploadCv={uploadCv}
+            profileViews={profileViews}
+            loadProfileViews={loadProfileViews}
+            notice={formNotice}
+          />
+        )}
+        <LegalNote />
       </main>
+
+      <footer className="site-footer">
+        <span>{YEAR}</span>
+        <span>Некоммерческий сайт для поддержки инклюзивного трудоустройства.</span>
+      </footer>
 
       {authOpen && (
         <AuthModal
           authForm={authForm}
           authMode={authMode}
+          authError={authError}
+          authNotice={authNotice}
+          verificationToken={verificationToken}
+          resetForm={resetForm}
           setAuthForm={setAuthForm}
+          setResetForm={setResetForm}
           setAuthMode={setAuthMode}
           setAuthOpen={setAuthOpen}
+          setAuthError={setAuthError}
+          setAuthNotice={setAuthNotice}
           submitAuth={submitAuth}
+          verifyEmail={verifyEmail}
+          requestPasswordReset={requestPasswordReset}
+          resetPassword={resetPassword}
         />
       )}
     </div>
   );
 }
 
-function AuthModal({ authForm, authMode, setAuthForm, setAuthMode, setAuthOpen, submitAuth }) {
+function Header({ user, page, isCandidate, isManager, setPage, showAuth, signOut }) {
+  const openStartPage = () => setPage(isManager ? "directory" : isCandidate ? "profile" : "home");
   return (
-    <div className="modal-backdrop" role="presentation">
-      <section className="modal" role="dialog" aria-modal="true" aria-labelledby="auth-title">
-        <div className="inline-heading">
-          <h2 id="auth-title">{authMode === "login" ? "Sign in" : "Create account"}</h2>
-          <button type="button" className="icon-button" onClick={() => setAuthOpen(false)}>
-            Close
-          </button>
-        </div>
-
-        <form onSubmit={submitAuth}>
-          <fieldset className="segmented-control">
-            <legend>Account action</legend>
-            <label>
-              <input
-                type="radio"
-                name="authMode"
-                checked={authMode === "login"}
-                onChange={() => setAuthMode("login")}
-              />
-              Sign in
-            </label>
-            <label>
-              <input
-                type="radio"
-                name="authMode"
-                checked={authMode === "register"}
-                onChange={() => setAuthMode("register")}
-              />
-              Sign up
-            </label>
-          </fieldset>
-
-          {authMode === "register" && (
-            <>
-              <label htmlFor="name">Full name</label>
-              <input
-                id="name"
-                name="name"
-                value={authForm.name}
-                onChange={(event) => setAuthForm({ ...authForm, name: event.target.value })}
-                required
-              />
-
-              <label htmlFor="role">Role</label>
-              <select
-                id="role"
-                name="role"
-                value={authForm.role}
-                onChange={(event) => setAuthForm({ ...authForm, role: event.target.value })}
-              >
-                {authRoles.map((role) => (
-                  <option key={role} value={role}>
-                    {role === "candidate" ? "Candidate" : "Hiring manager"}
-                  </option>
-                ))}
-              </select>
-            </>
-          )}
-
-          <label htmlFor="email">Email</label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            value={authForm.email}
-            onChange={(event) => setAuthForm({ ...authForm, email: event.target.value })}
-            required
-          />
-
-          <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete={authMode === "login" ? "current-password" : "new-password"}
-            minLength="8"
-            value={authForm.password}
-            onChange={(event) => setAuthForm({ ...authForm, password: event.target.value })}
-            required
-          />
-
-          <button type="submit">{authMode === "login" ? "Sign in" : "Create account"}</button>
-        </form>
-      </section>
-    </div>
+    <header className="site-header">
+      <button className="brand-button" type="button" onClick={openStartPage}>inclusive-hire</button>
+      <nav aria-label="Главная навигация">
+        {isManager && <button type="button" className={page === "directory" ? "nav-active" : ""} onClick={() => setPage("directory")}>Кандидаты</button>}
+        {isCandidate && <button type="button" className={page === "profile" ? "nav-active" : ""} onClick={() => setPage("profile")}>Мой профиль</button>}
+      </nav>
+      <div className="header-actions">
+        {user ? (
+          <>
+            <span className="account-chip">{user.name}</span>
+            <button className="button secondary" type="button" onClick={signOut}>Выйти</button>
+          </>
+        ) : (
+          <>
+            <button className="button secondary" type="button" onClick={() => showAuth("login")}>Войти</button>
+            <button className="button primary" type="button" onClick={() => showAuth("register")}>Регистрация</button>
+          </>
+        )}
+      </div>
+    </header>
   );
 }
 
-function CandidateProfilePanel({
-  candidateProfile,
-  loadProfileViews,
-  profileForm,
-  profileLists,
-  profileViews,
-  saveProfile,
-  setProfileForm,
-  uploadCv
-}) {
+function Hero({ user, isCandidate, isManager, page, showAuth, setPage }) {
+  const publicHero = !user;
+  const title = publicHero
+    ? "Найм людей с инвалидностью в Бишкеке"
+    : isManager
+      ? "Профили соискателей"
+      : "Ваш профиль соискателя";
+  const text = publicHero
+    ? "Работодатели находят сильных специалистов, соискатели показывают опыт, навыки и удобный формат работы."
+    : isManager
+      ? "Используйте поиск, фильтры и карточки кандидатов, чтобы быстро найти человека под роль и открыть полный профиль."
+      : "Заполните профиль так, чтобы работодатель сразу понял ваш опыт, формат работы и условия доступности.";
+
   return (
-    <section id="candidate-profile" className="panel-grid" aria-labelledby="candidate-profile-title">
-      <form className="form-panel" onSubmit={saveProfile}>
-        <h2 id="candidate-profile-title">My candidate profile</h2>
-
-        <label htmlFor="headline">Headline</label>
-        <input
-          id="headline"
-          value={profileForm.headline}
-          onChange={(event) => setProfileForm({ ...profileForm, headline: event.target.value })}
-          maxLength="160"
-        />
-
-        <label htmlFor="summary">Summary</label>
-        <textarea
-          id="summary"
-          value={profileForm.summary}
-          onChange={(event) => setProfileForm({ ...profileForm, summary: event.target.value })}
-          rows="5"
-          maxLength="3000"
-        />
-
-        <label htmlFor="skills">Skills, separated by commas</label>
-        <input
-          id="skills"
-          value={profileForm.skills}
-          onChange={(event) => setProfileForm({ ...profileForm, skills: event.target.value })}
-        />
-
-        <label htmlFor="languages">Languages, separated by commas</label>
-        <input
-          id="languages"
-          value={profileForm.languages}
-          onChange={(event) => setProfileForm({ ...profileForm, languages: event.target.value })}
-        />
-
-        <label htmlFor="accessibilityPreferences">Accessibility preferences</label>
-        <textarea
-          id="accessibilityPreferences"
-          value={profileForm.accessibilityPreferences}
-          onChange={(event) =>
-            setProfileForm({ ...profileForm, accessibilityPreferences: event.target.value })
-          }
-          rows="4"
-          maxLength="2000"
-        />
-
-        <label htmlFor="location">Location</label>
-        <input
-          id="location"
-          value={profileForm.location}
-          onChange={(event) => setProfileForm({ ...profileForm, location: event.target.value })}
-          maxLength="160"
-        />
-
-        <button type="submit">Save profile</button>
-      </form>
-
-      <div className="stack">
-        <form className="form-panel" onSubmit={uploadCv}>
-          <h3>CV upload</h3>
-          <label htmlFor="cv">CV file</label>
-          <input id="cv" name="cv" type="file" accept=".pdf,.doc,.docx" required />
-          <button type="submit">Upload CV</button>
-        </form>
-
-        <ProfileSummary
-          profile={{
-            ...candidateProfile,
-            headline: candidateProfile?.headline ?? profileForm.headline,
-            skills: candidateProfile?.skills ?? profileLists.skills,
-            languages: candidateProfile?.languages ?? profileLists.languages,
-            location: candidateProfile?.location ?? profileForm.location,
-            cv: candidateProfile?.cv
-          }}
-        />
-
-        <section className="summary-panel" aria-labelledby="profile-views-title">
-          <div className="inline-heading">
-            <h3 id="profile-views-title">Companies that opened my profile</h3>
-            <button type="button" className="secondary-button" onClick={loadProfileViews}>
-              Refresh
-            </button>
+    <section className={`hero hero-${publicHero ? "public" : page}`}>
+      <div className="hero-content">
+        <p className="eyebrow">Инклюзивный найм</p>
+        <h1>{title}</h1>
+        <p>{text}</p>
+        {publicHero && (
+          <div className="hero-actions">
+            <button className="button primary" type="button" onClick={() => showAuth("login", "hiring_manager")}>Найти сотрудника</button>
+            <button className="button secondary" type="button" onClick={() => showAuth("login", "candidate")}>Загрузить резюме</button>
           </div>
-          {profileViews.length === 0 ? (
-            <p className="empty-state">No company views loaded.</p>
-          ) : (
-            <ul className="plain-list">
-              {profileViews.map((view) => (
-                <li key={view.id}>
-                  {view.company?.name ?? "Company"} viewed on{" "}
-                  {new Date(view.viewedAt).toLocaleDateString()}
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        )}
+        {isCandidate && <button className="button primary" type="button" onClick={() => setPage("profile")}>Редактировать профиль</button>}
       </div>
     </section>
   );
 }
 
-function EmployeeDirectory({
-  companyForm,
-  employees,
-  filters,
-  loadEmployees,
-  openEmployeeProfile,
-  saveCompany,
-  selectedProfile,
-  setCompanyForm,
-  setFilters,
-  setSelectedProfile,
-  updateStatus
-}) {
+function PublicHome() {
   return (
-    <section id="directory" aria-labelledby="directory-title">
-      <div className="directory-header">
-        <div>
-          <p className="eyebrow">Hiring manager</p>
-          <h2 id="directory-title">Employee directory</h2>
-          <p className="section-copy">
-            Filter candidates, open cards for a full profile, and update hiring status.
-          </p>
-        </div>
+    <section className="public-section">
+      <div className="section-heading">
+        <p className="eyebrow">Профили соискателей</p>
+        <h2>Профили соискателей</h2>
+        <p>Для того чтобы посмотреть профили всех кандидатов, необходимо зарегистрироваться или войти как работодатель.</p>
       </div>
+      <div className="listing-grid">
+        {sampleCandidates.map((candidate) => <CandidateCard key={candidate.name} candidate={candidate} preview />)}
+      </div>
+    </section>
+  );
+}
 
-      <div className="manager-layout">
-        <aside className="filter-panel" aria-labelledby="filters-title">
-          <form onSubmit={saveCompany}>
-            <h3>Company profile</h3>
-            <label htmlFor="companyName">Company name</label>
-            <input
-              id="companyName"
-              value={companyForm.name}
-              onChange={(event) => setCompanyForm({ ...companyForm, name: event.target.value })}
-              required
-              maxLength="160"
-            />
-            <label htmlFor="companyWebsite">Website</label>
-            <input
-              id="companyWebsite"
-              type="url"
-              value={companyForm.website}
-              onChange={(event) => setCompanyForm({ ...companyForm, website: event.target.value })}
-            />
-            <label htmlFor="companyDescription">Description</label>
-            <textarea
-              id="companyDescription"
-              value={companyForm.description}
-              onChange={(event) => setCompanyForm({ ...companyForm, description: event.target.value })}
-              rows="3"
-              maxLength="2000"
-            />
-            <label htmlFor="accessibilityCommitments">
-              Accessibility commitments, separated by commas
-            </label>
-            <textarea
-              id="accessibilityCommitments"
-              value={companyForm.accessibilityCommitments}
-              onChange={(event) =>
-                setCompanyForm({ ...companyForm, accessibilityCommitments: event.target.value })
-              }
-              rows="3"
-            />
-            <button type="submit">Save company</button>
-          </form>
+function LegalNote() {
+  return (
+    <section className="legal-note" aria-label="Правовая информация">
+      <p>
+        В Кыргызстане организации с численностью от 25 сотрудников обязаны выделять не менее 4% рабочих мест для людей с инвалидностью. Это требование закреплено в{" "}
+        <a href="https://cbd.minjust.gov.kg/3-45/edition/25298/ru" target="_blank" rel="noreferrer">
+          статье 155 Трудового кодекса Кыргызской Республики
+        </a>{" "}
+        и направлено на обеспечение равных возможностей при трудоустройстве.
+      </p>
+    </section>
+  );
+}
 
-          <form onSubmit={loadEmployees}>
-            <h3 id="filters-title">Filters</h3>
-            <label htmlFor="filterLocation">Location</label>
-            <input
-              id="filterLocation"
-              value={filters.location}
-              onChange={(event) => setFilters({ ...filters, location: event.target.value })}
-              placeholder="Remote, Bishkek, Berlin"
-            />
-            <label htmlFor="filterSkills">Skills</label>
-            <input
-              id="filterSkills"
-              value={filters.skills}
-              onChange={(event) => setFilters({ ...filters, skills: event.target.value })}
-              placeholder="accessibility testing, data analysis"
-            />
-            <label htmlFor="filterLanguages">Languages</label>
-            <input
-              id="filterLanguages"
-              value={filters.languages}
-              onChange={(event) => setFilters({ ...filters, languages: event.target.value })}
-              placeholder="English, Kyrgyz"
-            />
-            <div className="button-row">
-              <button type="submit">Apply filters</button>
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={() => {
-                  setFilters(emptyFilters);
-                  loadEmployees(undefined, emptyFilters);
-                }}
-              >
-                Reset
-              </button>
-            </div>
-          </form>
-        </aside>
+function DirectoryPage({ page, companyForm, setCompanyForm, saveCompany, companyProfile, companyEditing, setCompanyEditing, filters, setFilters, loadEmployees, employees, selectedProfile, setSelectedProfile, openEmployeeProfile, downloadCandidateCv, updateStatus, setPage }) {
+  if (selectedProfile) {
+    return (
+      <CandidateProfilePage
+        profile={selectedProfile}
+        onBack={() => {
+          setSelectedProfile(null);
+          setPage("directory");
+        }}
+        downloadCandidateCv={downloadCandidateCv}
+        updateStatus={updateStatus}
+      />
+    );
+  }
 
+  if (page === "candidate") {
+    return (
+      <section className="candidate-profile-page">
+        <p className="empty-state">Профиль загружается.</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="jobs-page">
+      <div className="results-top">
         <div>
+          <p className="eyebrow">Поиск сотрудников</p>
+          <h2>Профили соискателей</h2>
+        </div>
+        <span className="result-count">{employees.length} профилей</span>
+      </div>
+      <div className="jobs-layout">
+        <form className="filters-panel" onSubmit={loadEmployees}>
+          <h3>Фильтры</h3>
+          <Field id="query" label="Поиск по навыкам" value={filters.query} onChange={(value) => setFilters({ ...filters, query: value, skills: value })} placeholder="DevOps, React" />
+          <Field id="location" label="Локация" value={filters.location} onChange={(value) => setFilters({ ...filters, location: value })} placeholder="Бишкек, Ош, удаленно" />
+          <Field id="skills" label="Навыки" value={filters.skills} onChange={(value) => setFilters({ ...filters, skills: value, query: value })} placeholder="SQL, QA, Node.js" />
+          <Field id="languages" label="Языки" value={filters.languages} onChange={(value) => setFilters({ ...filters, languages: value })} placeholder="русский, кыргызча" />
+          <div className="filters-actions">
+            <button className="button primary full" type="submit">Показать</button>
+            <button className="button quiet full" type="button" onClick={() => { setFilters(emptyFilters); loadEmployees(undefined, emptyFilters); }}>Сбросить</button>
+          </div>
+        </form>
+        <div className="listing-stack">
           {employees.length === 0 ? (
-            <p className="empty-state">No employee profiles match the current filters.</p>
+            <p className="empty-state">По выбранным фильтрам кандидатов нет.</p>
           ) : (
-            <div className="employee-grid">
-              {employees.map((employee) => (
-                <button
-                  key={employee.id}
-                  type="button"
-                  className="employee-card"
-                  onClick={() => openEmployeeProfile(employee)}
-                >
-                  <span>{employee.user?.name ?? "Candidate"}</span>
-                  <strong>{employee.headline || "No headline provided"}</strong>
-                  <small>{employee.location || "Location not provided"}</small>
-                  <TagList items={employee.skills?.slice(0, 4) ?? []} />
-                </button>
-              ))}
-            </div>
+            employees.map((candidate) => (
+              <CandidateCard key={candidate.id} candidate={candidate} onClick={() => openEmployeeProfile(candidate)} />
+            ))
           )}
         </div>
+        <CompanyPanel companyForm={companyForm} setCompanyForm={setCompanyForm} companyProfile={companyProfile} companyEditing={companyEditing} setCompanyEditing={setCompanyEditing} saveCompany={saveCompany} />
       </div>
+    </section>
+  );
+}
 
-      {selectedProfile && (
-        <section className="profile-drawer" aria-labelledby="selected-profile-title">
-          <div className="inline-heading">
-            <h3 id="selected-profile-title">{selectedProfile.user?.name ?? "Candidate profile"}</h3>
-            <button type="button" className="secondary-button" onClick={() => setSelectedProfile(null)}>
-              Close profile
-            </button>
+function CompanyPanel({ companyForm, setCompanyForm, companyProfile, companyEditing, setCompanyEditing, saveCompany }) {
+  if (companyProfile && !companyEditing) {
+    return (
+      <aside className="company-panel">
+        <div className="card-heading-row">
+          <h3>{companyProfile.name}</h3>
+          <button className="link-button" type="button" onClick={() => setCompanyEditing(true)}>Редактировать</button>
+        </div>
+        {companyProfile.website && <p className="profile-location">{companyProfile.website}</p>}
+        {companyProfile.description && <p>{companyProfile.description}</p>}
+        <h4>Инклюзивные условия</h4>
+        <TagList items={companyProfile.accessibilityCommitments ?? []} empty="Условия пока не указаны." />
+      </aside>
+    );
+  }
+
+  return (
+    <aside className="company-panel">
+      <form onSubmit={saveCompany}>
+        <h3>Компания</h3>
+        <Field id="companyName" label="Название" value={companyForm.name} onChange={(value) => setCompanyForm({ ...companyForm, name: value })} required />
+        <Field id="website" label="Сайт" type="url" value={companyForm.website} onChange={(value) => setCompanyForm({ ...companyForm, website: value })} />
+        <TextField id="companyDescription" label="Описание" value={companyForm.description} onChange={(value) => setCompanyForm({ ...companyForm, description: value })} rows="3" />
+        <TextField id="commitments" label="Инклюзивные условия" value={companyForm.accessibilityCommitments} onChange={(value) => setCompanyForm({ ...companyForm, accessibilityCommitments: value })} rows="3" />
+        <button className="button secondary full" type="submit">Сохранить компанию</button>
+      </form>
+    </aside>
+  );
+}
+
+function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfileForm, profileLists, candidateProfile, saveProfile, uploadCv, profileViews, loadProfileViews, notice }) {
+  const preview = {
+    user,
+    ...candidateProfile,
+    headline: profileForm.headline,
+    location: profileForm.location,
+    skills: profileLists.skills,
+    languages: profileLists.languages,
+    summary: profileForm.summary,
+    accessibilityPreferences: profileForm.accessibilityPreferences,
+    portfolio: profileForm.portfolio,
+    contacts: {
+      email: profileForm.contactEmail || user.email,
+      messengerType: profileForm.messengerType,
+      messenger: profileForm.messenger || "@inclusive_hire"
+    }
+  };
+
+  return (
+    <section className="profile-page">
+      <div className="profile-title">
+        <div>
+          <p className="eyebrow">Отдельная страница профиля</p>
+          <h2>Редактирование профиля</h2>
+          <p>Все ключевые поля анкеты редактируются здесь: имя, опыт, навыки, языки, локация, условия доступности и резюме.</p>
+        </div>
+        <span className="profile-state">{profileForm.availability}</span>
+      </div>
+      {notice && <p className="inline-notice" role="status">{notice}</p>}
+      <div className="profile-grid">
+        <form className="profile-editor" onSubmit={saveProfile}>
+          <section className="edit-card">
+            <h3>Аккаунт</h3>
+            <Field id="accountName" label="Имя и фамилия" value={accountForm.name} onChange={(value) => setAccountForm({ name: value })} required />
+            <Field id="accountEmail" label="Email" value={user.email} onChange={() => {}} disabled />
+          </section>
+          <section className="edit-card">
+            <h3>Профессиональный профиль</h3>
+            <Field id="headline" label="Профессиональный заголовок" value={profileForm.headline} onChange={(value) => setProfileForm({ ...profileForm, headline: value })} placeholder="Например: DevOps инженер" />
+            <TextField id="summary" label="Опыт и сильные стороны" value={profileForm.summary} onChange={(value) => setProfileForm({ ...profileForm, summary: value })} rows="5" />
+            <Field id="skills" label="Навыки через запятую" value={profileForm.skills} onChange={(value) => setProfileForm({ ...profileForm, skills: value })} />
+            <Field id="languages" label="Языки через запятую" value={profileForm.languages} onChange={(value) => setProfileForm({ ...profileForm, languages: value })} />
+            <Field id="location" label="Город или формат работы" value={profileForm.location} onChange={(value) => setProfileForm({ ...profileForm, location: value })} />
+            <Field id="portfolio" label="Портфолио или ссылка на работы" value={profileForm.portfolio} onChange={(value) => setProfileForm({ ...profileForm, portfolio: value })} placeholder="https://..." />
+            <Field id="contactEmail" label="Email для связи" type="email" value={profileForm.contactEmail} onChange={(value) => setProfileForm({ ...profileForm, contactEmail: value })} />
+            <div className="field-pair">
+              <div>
+                <label htmlFor="messengerType">Мессенджер</label>
+                <select id="messengerType" value={profileForm.messengerType} onChange={(event) => setProfileForm({ ...profileForm, messengerType: event.target.value })}>
+                  <option value="telegram">Telegram</option>
+                  <option value="whatsapp">WhatsApp</option>
+                </select>
+              </div>
+              <div>
+                <Field id="messenger" label="Контакт" value={profileForm.messenger} onChange={(value) => setProfileForm({ ...profileForm, messenger: value })} placeholder="@username или номер" />
+              </div>
+            </div>
+            <TextField id="accessibility" label="Условия доступности" value={profileForm.accessibilityPreferences} onChange={(value) => setProfileForm({ ...profileForm, accessibilityPreferences: value })} rows="4" />
+            <Field id="availability" label="Статус поиска" value={profileForm.availability} onChange={(value) => setProfileForm({ ...profileForm, availability: value })} />
+          </section>
+          <button className="button primary wide" type="submit">Сохранить профиль</button>
+        </form>
+        <aside className="profile-side">
+          <ProfileSummary profile={preview} detailed />
+          <form className="edit-card" onSubmit={uploadCv}>
+            <h3>Резюме</h3>
+            <Field id="cv" name="cv" label="Файл резюме" type="file" onChange={() => {}} accept=".pdf,.doc,.docx" required />
+            <button className="button secondary full" type="submit">Загрузить резюме</button>
+            <p className="hint">{candidateProfile?.cv?.originalName ?? "Резюме пока не загружено."}</p>
+          </form>
+          <section className="edit-card">
+            <div className="card-heading-row">
+              <h3>Просмотры профиля</h3>
+              <button className="button quiet" type="button" onClick={loadProfileViews}>Обновить</button>
+            </div>
+            {profileViews.length === 0 ? (
+              <p className="empty-state">Просмотры пока не загружены.</p>
+            ) : (
+              <ul className="views-list">
+                {profileViews.map((view) => (
+                  <li key={view.id}>{view.company?.name ?? "Компания"} - {new Date(view.viewedAt).toLocaleDateString("ru-RU")}</li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </aside>
+      </div>
+    </section>
+  );
+}
+
+function CandidateCard({ candidate, onClick, preview = false }) {
+  const name = candidate.user?.name ?? candidate.name ?? "Кандидат";
+  const initials = name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+  const contacts = contactInfo(candidate);
+  const body = (
+    <>
+      <div className="logo-mark">{initials}</div>
+      <div className="candidate-main">
+        <div className="candidate-title-row">
+          <div>
+            <h3>{candidate.headline || "Профиль кандидата"}</h3>
+            <p>{name}</p>
           </div>
-          <ProfileSummary profile={selectedProfile} detailed />
-          <div className="button-row" aria-label="Update candidate status">
+        </div>
+        <ul className="meta-list">
+          <li>{candidate.location || "Локация не указана"}</li>
+          <li>Навыки: {(candidate.skills ?? []).slice(0, 3).join(", ") || "не указаны"}</li>
+          <li>Языки: {(candidate.languages ?? []).join(", ") || "не указаны"}</li>
+          {!preview && <li>{contacts.email}</li>}
+        </ul>
+        <TagList items={candidate.skills ?? []} />
+        {!preview && <button className="button primary card-action" type="button" onClick={onClick}>Смотреть полный профиль</button>}
+      </div>
+    </>
+  );
+
+  if (preview) return <article className="candidate-card">{body}</article>;
+  return <article className="candidate-card interactive">{body}</article>;
+}
+
+function CandidateProfilePage({ profile, onBack, downloadCandidateCv, updateStatus }) {
+  return (
+    <section className="candidate-profile-page" aria-label="Профиль кандидата">
+      <div className="profile-title">
+        <div>
+          <p className="eyebrow">Полный профиль</p>
+          <h2>{profile.user?.name}</h2>
+        </div>
+        <button className="button secondary" type="button" onClick={onBack}>Назад к профилям</button>
+      </div>
+      <div className="candidate-profile-layout">
+        <ProfileSummary profile={profile} detailed />
+        <aside className="profile-actions-card">
+          <h3>Действия</h3>
+          <button className="button primary full" type="button" onClick={() => downloadCandidateCv(profile)} disabled={!profile.cv?.originalName}>
+            {profile.cv?.originalName ? "Скачать резюме" : "Резюме не загружено"}
+          </button>
+          <div className="status-actions vertical">
             {statuses.map((status) => (
-              <button
-                key={status}
-                type="button"
-                className="secondary-button"
-                onClick={() => updateStatus(selectedProfile.id, status)}
-              >
-                {status}
+              <button key={status} className="button secondary full" type="button" onClick={() => updateStatus(profile.id, status)}>
+                {statusLabels[status]}
               </button>
             ))}
           </div>
-        </section>
-      )}
+        </aside>
+      </div>
+    </section>
+  );
+}
+
+function ProfileDrawer({ profile, onClose, updateStatus }) {
+  return (
+    <section className="profile-drawer" aria-label="Профиль кандидата">
+      <div className="drawer-shell">
+        <div className="card-heading-row">
+          <h2>{profile.user?.name}</h2>
+          <button className="button quiet" type="button" onClick={onClose}>Закрыть</button>
+        </div>
+        <ProfileSummary profile={profile} detailed />
+        <div className="status-actions">
+          {statuses.map((status) => (
+            <button key={status} className="button secondary" type="button" onClick={() => updateStatus(profile.id, status)}>
+              {statusLabels[status]}
+            </button>
+          ))}
+        </div>
+      </div>
     </section>
   );
 }
 
 function ProfileSummary({ profile, detailed = false }) {
+  const contacts = contactInfo(profile);
+  const messengerLabel = contacts.messengerType === "whatsapp" ? "WhatsApp" : "Telegram";
   return (
-    <section className="summary-panel" aria-labelledby="profile-summary-title">
-      <h3 id="profile-summary-title">{profile?.headline || "Profile preview"}</h3>
-      {profile?.location && <p className="metric">{profile.location}</p>}
-      {detailed && profile?.summary && <p>{profile.summary}</p>}
-      <h4>Skills</h4>
-      <TagList items={profile?.skills ?? []} emptyText="No skills added yet." />
-      <h4>Languages</h4>
-      <TagList items={profile?.languages ?? []} emptyText="No languages added yet." />
-      {detailed && profile?.accessibilityPreferences && (
+    <section className="profile-card">
+      <div className="profile-avatar">{(profile?.user?.name ?? "П").slice(0, 1)}</div>
+      <h3>{profile?.headline || "Профиль соискателя"}</h3>
+      {profile?.location && <p className="profile-location">{profile.location}</p>}
+      {detailed && profile?.summary && <p className="profile-summary-text">{profile.summary}</p>}
+      {detailed && profile?.portfolio && <p className="profile-location">{profile.portfolio}</p>}
+      {detailed && (
         <>
-          <h4>Accessibility preferences</h4>
-          <p>{profile.accessibilityPreferences}</p>
+          <h4>Контакты</h4>
+          <ul className="contact-list">
+            <li><span>Email</span><a href={`mailto:${contacts.email}`}>{contacts.email}</a></li>
+            <li><span>{messengerLabel}</span><strong>{contacts.messenger}</strong></li>
+          </ul>
         </>
       )}
-      <p className="file-note">{profile?.cv?.originalName ?? "No CV uploaded yet."}</p>
+      <h4>Навыки</h4>
+      <TagList items={profile?.skills ?? []} empty="Навыки не указаны." />
+      <h4>Языки</h4>
+      <TagList items={profile?.languages ?? []} empty="Языки не указаны." />
+      {detailed && profile?.accessibilityPreferences && (
+        <>
+          <h4>Условия доступности</h4>
+          <p className="accessibility-note">{profile.accessibilityPreferences}</p>
+        </>
+      )}
+      <p className="hint">{profile?.cv?.originalName ?? "Резюме можно загрузить в профиле."}</p>
     </section>
   );
 }
 
-function TagList({ items, emptyText = "None added." }) {
-  if (!items || items.length === 0) {
-    return <p className="empty-inline">{emptyText}</p>;
-  }
+function AuthModal({ authForm, authMode, authError, authNotice, verificationToken, resetForm, setAuthForm, setResetForm, setAuthMode, setAuthOpen, setAuthError, setAuthNotice, submitAuth, verifyEmail, requestPasswordReset, resetPassword }) {
+  const [showPassword, setShowPassword] = useState(false);
+  const isLogin = authMode === "login";
+  const isRegister = authMode === "register";
+  const isVerify = authMode === "verify";
+  const isForgot = authMode === "forgot";
+  const isReset = authMode === "reset";
+  const title = isVerify
+    ? "Подтверждение email"
+    : isForgot
+      ? "Восстановление пароля"
+      : isReset
+        ? "Новый пароль"
+        : isLogin
+          ? "Войти"
+          : "Регистрация";
+  const switchMode = (nextMode) => {
+    setAuthMode(nextMode);
+    setAuthError("");
+    setAuthNotice("");
+  };
 
   return (
+    <div className="modal-backdrop">
+      <section className="modal" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+        <div className="card-heading-row">
+          <h2 id="auth-title">{title}</h2>
+          <button className="icon-close" type="button" aria-label="Закрыть" onClick={() => setAuthOpen(false)}>×</button>
+        </div>
+        {authError && <p className="inline-notice error" role="alert">{authError}</p>}
+        {authNotice && <p className="inline-notice" role="status">{authNotice}</p>}
+        {isVerify ? (
+          <div className="verification-panel">
+            {verificationToken ? (
+              <>
+                <p>Нажмите кнопку ниже, чтобы завершить подтверждение email.</p>
+                <button className="button primary wide" type="button" onClick={verifyEmail}>Подтвердить email</button>
+              </>
+            ) : (
+              <p>Письмо с подтверждением отправлено. Откройте ссылку из письма, чтобы завершить регистрацию.</p>
+            )}
+          </div>
+        ) : isForgot ? (
+          <form onSubmit={requestPasswordReset}>
+            <p className="form-copy">Введите email, и мы отправим ссылку для установки нового пароля.</p>
+            <Field id="resetEmail" label="Email" type="email" value={resetForm.email} onChange={(value) => setResetForm({ ...resetForm, email: value })} required />
+            <button className="button primary wide" type="submit">Получить ссылку</button>
+            <p className="auth-switch">
+              Вспомнили пароль?{" "}
+              <button type="button" className="link-button" onClick={() => switchMode("login")}>Войти</button>
+            </p>
+          </form>
+        ) : isReset ? (
+          <form onSubmit={resetPassword}>
+            <p className="form-copy">Введите новый пароль для вашего аккаунта.</p>
+            <PasswordField id="newPassword" label="Новый пароль" value={resetForm.password} onChange={(value) => setResetForm({ ...resetForm, password: value })} showPassword={showPassword} setShowPassword={setShowPassword} required />
+            <button className="button primary wide" type="submit">Сохранить новый пароль</button>
+          </form>
+        ) : (
+          <form onSubmit={submitAuth}>
+            {isRegister && (
+              <>
+                <Field id="name" label="Имя и фамилия" value={authForm.name} onChange={(value) => setAuthForm({ ...authForm, name: value })} required />
+                <label htmlFor="role">Роль</label>
+                <select id="role" value={authForm.role} onChange={(event) => setAuthForm({ ...authForm, role: event.target.value })}>
+                  <option value="candidate">Ищу подходящую работу</option>
+                  <option value="hiring_manager">Ищу сотрудника с ограниченными возможностями</option>
+                </select>
+              </>
+            )}
+            <Field id="email" label="Email" type="email" value={authForm.email} onChange={(value) => setAuthForm({ ...authForm, email: value })} required />
+            <PasswordField id="password" label="Пароль" value={authForm.password} onChange={(value) => setAuthForm({ ...authForm, password: value })} showPassword={showPassword} setShowPassword={setShowPassword} required />
+            {isLogin && <button className="link-button forgot-button" type="button" onClick={() => { setResetForm({ ...emptyResetForm, email: authForm.email }); switchMode("forgot"); }}>Забыли пароль?</button>}
+            <button className="button primary wide" type="submit">{isLogin ? "Войти" : "Создать аккаунт"}</button>
+            <p className="auth-switch">
+              {isLogin ? "Нет аккаунта?" : "Уже есть аккаунт?"}{" "}
+              <button type="button" className="link-button" onClick={() => switchMode(isLogin ? "register" : "login")}>
+                {isLogin ? "Зарегистрироваться" : "Войти"}
+              </button>
+            </p>
+          </form>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function PasswordField({ id, label, value, onChange, showPassword, setShowPassword, ...props }) {
+  return (
+    <div className="password-field">
+      <Field id={id} label={label} type={showPassword ? "text" : "password"} value={value} onChange={onChange} {...props} />
+      <button className="button quiet password-toggle" type="button" onClick={() => setShowPassword(!showPassword)}>
+        {showPassword ? "Скрыть" : "Показать"}
+      </button>
+    </div>
+  );
+}
+
+function Field({ id, label, value, onChange, type = "text", ...props }) {
+  return (
+    <>
+      <label htmlFor={id}>{label}</label>
+      <input id={id} type={type} value={type === "file" ? undefined : value} onChange={(event) => onChange(event.target.value)} {...props} />
+    </>
+  );
+}
+
+function TextField({ id, label, value, onChange, rows = "4" }) {
+  return (
+    <>
+      <label htmlFor={id}>{label}</label>
+      <textarea id={id} value={value} rows={rows} onChange={(event) => onChange(event.target.value)} />
+    </>
+  );
+}
+
+function TagList({ items, empty = "Не указано." }) {
+  return items.length ? (
     <ul className="tag-list">
-      {items.map((item) => (
-        <li key={item}>{item}</li>
-      ))}
+      {items.map((item) => <li key={item}>{item}</li>)}
     </ul>
+  ) : (
+    <p className="empty-inline">{empty}</p>
   );
 }
 

@@ -16,7 +16,14 @@ const profilePayload = (profile) => ({
   skills: profile.skills,
   languages: profile.languages,
   accessibilityPreferences: profile.accessibilityPreferences,
+  portfolio: profile.portfolio,
+  availability: profile.availability,
   location: profile.location,
+  contacts: {
+    email: profile.contacts?.email || profile.user?.email,
+    messenger: profile.contacts?.messenger || "",
+    messengerType: profile.contacts?.messengerType || "telegram"
+  },
   cv: profile.cv,
   createdAt: profile.createdAt,
   updatedAt: profile.updatedAt
@@ -73,17 +80,13 @@ export const getCandidate = async (req, res) => {
 
   const company = await Company.findOne({ owner: req.user.id });
 
-  if (!company) {
-    const error = new Error("Company profile is required before viewing candidates");
-    error.status = 400;
-    throw error;
+  if (company) {
+    await ProfileView.create({
+      candidate: profile.user.id,
+      company: company.id,
+      viewedBy: req.user.id
+    });
   }
-
-  await ProfileView.create({
-    candidate: profile.user.id,
-    company: company.id,
-    viewedBy: req.user.id
-  });
 
   res.status(200).json({
     candidate: profilePayload(profile)
@@ -114,7 +117,10 @@ export const upsertMyCandidateProfile = async (req, res) => {
         skills: req.body.skills,
         languages: req.body.languages,
         accessibilityPreferences: req.body.accessibilityPreferences,
-        location: req.body.location
+        portfolio: req.body.portfolio,
+        availability: req.body.availability,
+        location: req.body.location,
+        contacts: req.body.contacts
       }
     },
     {
@@ -132,7 +138,7 @@ export const upsertMyCandidateProfile = async (req, res) => {
 
 export const uploadMyCv = async (req, res) => {
   if (!req.file) {
-    const error = new Error("CV file is required");
+    const error = new Error("Файл резюме обязателен");
     error.status = 400;
     throw error;
   }
@@ -167,7 +173,7 @@ export const downloadCandidateCv = async (req, res) => {
   const profile = await CandidateProfile.findById(req.params.id);
 
   if (!profile?.cv?.filename) {
-    const error = new Error("CV not found for candidate profile");
+    const error = new Error("Резюме не найдено");
     error.status = 404;
     throw error;
   }

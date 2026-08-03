@@ -48,6 +48,26 @@ services:
       retries: 5
       start_period: 10s
 
+  mailpit:
+    image: axllent/mailpit:v1.20
+    container_name: inclusive-hire-mailpit
+    restart: unless-stopped
+    ports:
+      - "8025:8025"
+    networks:
+      - inclusive_hire_net
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   api:
     image: inclusive-hire-api:latest
     container_name: inclusive-hire-api
@@ -63,6 +83,11 @@ services:
       MONGODB_PASSWORD_FILE: /run/secrets/mongodb_password
       REDIS_URL: redis://redis:6379
       JWT_SECRET_FILE: /run/secrets/jwt_secret
+      PUBLIC_APP_URL: http://localhost:8080
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      SMTP_SECURE: "false"
+      MAIL_FROM: inclusive-hire <no-reply@inclusive-hire.local>
     secrets:
       - mongodb_password
       - jwt_secret
@@ -91,6 +116,8 @@ services:
       mongodb:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      mailpit:
         condition: service_healthy
 
   web:

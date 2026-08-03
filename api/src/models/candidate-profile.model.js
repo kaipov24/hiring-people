@@ -34,10 +34,37 @@ const candidateProfileSchema = new mongoose.Schema(
       trim: true,
       maxlength: 2000
     },
+    portfolio: {
+      type: String,
+      trim: true,
+      maxlength: 300
+    },
+    availability: {
+      type: String,
+      trim: true,
+      maxlength: 120
+    },
     location: {
       type: String,
       trim: true,
       maxlength: 160
+    },
+    contacts: {
+      email: {
+        type: String,
+        trim: true,
+        maxlength: 160
+      },
+      messenger: {
+        type: String,
+        trim: true,
+        maxlength: 160
+      },
+      messengerType: {
+        type: String,
+        enum: ["telegram", "whatsapp"],
+        default: "telegram"
+      }
     },
     cv: {
       filename: String,
@@ -52,6 +79,12 @@ const candidateProfileSchema = new mongoose.Schema(
   }
 );
 
-candidateProfileSchema.index({ headline: "text", summary: "text", skills: "text", languages: "text" });
+candidateProfileSchema.index({
+  headline: "text",
+  summary: "text",
+  skills: "text",
+  languages: "text",
+  availability: "text"
+});
 
 export const CandidateProfile = mongoose.model("CandidateProfile", candidateProfileSchema);
