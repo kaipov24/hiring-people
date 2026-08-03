@@ -106,6 +106,15 @@ const readCandidateRoute = () => {
   return match ? decodeURIComponent(match[1]) : "";
 };
 
+const readCompanyRoute = () => {
+  const pathMatch = window.location.pathname.match(/^\/companies\/([^/]+)$/);
+  if (pathMatch) return decodeURIComponent(pathMatch[1]);
+
+  const route = window.location.hash.slice(1).split("?")[0];
+  const match = route.match(/^companies\/([^/]+)$/);
+  return match ? decodeURIComponent(match[1]) : "";
+};
+
 function App() {
   const [session, setSession] = useState(readStoredSession);
   const [page, setPageState] = useState("home");
@@ -180,7 +189,7 @@ function App() {
     }
 
     setAccountForm({ name: user.name ?? "" });
-    setPageState(isManager && readCandidateRoute() ? "candidate" : isManager ? "directory" : "profile");
+    setPageState(readCompanyRoute() ? "companies" : isManager && readCandidateRoute() ? "candidate" : isManager ? "directory" : "profile");
   }, [user?.id, user?.role]);
 
   useEffect(() => {
@@ -262,10 +271,36 @@ function App() {
   }, [isCandidate, token]);
 
   useEffect(() => {
-    if (!isCandidate || !token) return;
-    if (page === "candidates") loadEmployees(undefined, filters);
+    if (!user || !token) return;
+    if (isCandidate && page === "candidates") loadEmployees(undefined, filters);
     if (page === "companies") loadCompanies();
-  }, [isCandidate, token, page]);
+  }, [user?.id, isCandidate, token, page]);
+
+  useEffect(() => {
+    if (!user || !token) return;
+
+    const loadCompanyRoute = async () => {
+      const companyId = readCompanyRoute();
+      if (!companyId) return;
+
+      try {
+        const data = await request(`/api/companies/${companyId}`, { headers: authHeaders(token) });
+        setSelectedCompany(data.company);
+        setPageState("companies");
+      } catch (error) {
+        setFormNotice(error.message);
+        setPage(isCandidate ? "companies" : isManager ? "directory" : "home");
+      }
+    };
+
+    loadCompanyRoute();
+    window.addEventListener("hashchange", loadCompanyRoute);
+    window.addEventListener("popstate", loadCompanyRoute);
+    return () => {
+      window.removeEventListener("hashchange", loadCompanyRoute);
+      window.removeEventListener("popstate", loadCompanyRoute);
+    };
+  }, [user?.id, token]);
 
   const showAuth = (mode, role = "candidate") => {
     setAuthMode(mode);
@@ -527,6 +562,8 @@ function App() {
     try {
       const data = await request(`/api/companies/${company.id}`, { headers: authHeaders(token) });
       setSelectedCompany(data.company);
+      setPageState("companies");
+      window.history.pushState(null, "", `/companies/${company.id}`);
     } catch (error) {
       setFormNotice(error.message);
     }
@@ -564,12 +601,6 @@ function App() {
         {isManager && (page === "directory" || page === "candidate") && (
           <DirectoryPage
             page={page}
-            companyForm={companyForm}
-            setCompanyForm={setCompanyForm}
-            saveCompany={saveCompany}
-            companyProfile={companyProfile}
-            companyEditing={companyEditing}
-            setCompanyEditing={setCompanyEditing}
             filters={filters}
             setFilters={setFilters}
             loadEmployees={loadEmployees}
@@ -580,8 +611,18 @@ function App() {
             downloadCandidateCv={downloadCandidateCv}
             updateStatus={updateStatus}
             setPage={setPage}
-            showCompanyPanel
             canManageCandidates
+          />
+        )}
+        {isManager && page === "company" && (
+          <CompanyPage
+            companyForm={companyForm}
+            setCompanyForm={setCompanyForm}
+            companyProfile={companyProfile}
+            companyEditing={companyEditing}
+            setCompanyEditing={setCompanyEditing}
+            saveCompany={saveCompany}
+            notice={formNotice}
           />
         )}
         {isCandidate && page === "profile" && (
@@ -613,17 +654,17 @@ function App() {
             openEmployeeProfile={openEmployeeProfile}
             setPage={setPage}
             returnPage="candidates"
-            showCompanyPanel={false}
             canManageCandidates={false}
           />
         )}
-        {isCandidate && page === "companies" && (
+        {user && page === "companies" && (
           <CompaniesPage
             companies={companies}
             selectedCompany={selectedCompany}
             setSelectedCompany={setSelectedCompany}
             openCompany={openCompany}
             loadCompanies={loadCompanies}
+            setPage={setPage}
             notice={formNotice}
           />
         )}
@@ -668,6 +709,7 @@ function Header({ user, page, isCandidate, isManager, setPage, showAuth, signOut
       <button className="brand-button" type="button" onClick={openStartPage}>inclusive-hire</button>
       <nav aria-label="Главная навигация">
         {isManager && <button type="button" className={page === "directory" ? "nav-active" : ""} onClick={() => setPage("directory")}>Кандидаты</button>}
+        {isManager && <button type="button" className={page === "company" ? "nav-active" : ""} onClick={() => setPage("company")}>Моя компания</button>}
         {isCandidate && <button type="button" className={page === "profile" ? "nav-active" : ""} onClick={() => setPage("profile")}>Мой профиль</button>}
         {isCandidate && <button type="button" className={page === "candidates" || page === "candidate" ? "nav-active" : ""} onClick={() => setPage("candidates")}>Кандидаты</button>}
         {isCandidate && <button type="button" className={page === "companies" ? "nav-active" : ""} onClick={() => setPage("companies")}>Компании</button>}
@@ -694,7 +736,9 @@ function Hero({ user, isCandidate, isManager, page, showAuth, setPage }) {
   const title = publicHero
     ? "Найм людей с инвалидностью в Бишкеке"
     : isManager
-      ? "Профили соискателей"
+      ? page === "company"
+        ? "Профиль компании"
+        : "Профили соискателей"
       : page === "candidates"
         ? "Профили соискателей"
         : page === "companies"
@@ -703,7 +747,9 @@ function Hero({ user, isCandidate, isManager, page, showAuth, setPage }) {
   const text = publicHero
     ? "Работодатели находят сильных специалистов, соискатели показывают опыт, навыки и удобный формат работы."
     : isManager
-      ? "Используйте поиск, фильтры и карточки кандидатов, чтобы быстро найти человека под роль и открыть полный профиль."
+      ? page === "company"
+        ? "Заполните описание, контакты и условия работы, чтобы соискатели понимали вашу команду."
+        : "Используйте поиск, фильтры и карточки кандидатов, чтобы быстро найти человека под роль и открыть полный профиль."
       : page === "candidates"
         ? "Смотрите примеры профилей, навыки и форматы работы других соискателей."
         : page === "companies"
@@ -757,7 +803,7 @@ function LegalNote() {
   );
 }
 
-function DirectoryPage({ page, companyForm, setCompanyForm, saveCompany, companyProfile, companyEditing, setCompanyEditing, filters, setFilters, loadEmployees, employees, selectedProfile, setSelectedProfile, openEmployeeProfile, downloadCandidateCv, updateStatus, setPage, returnPage = "directory", showCompanyPanel = true, canManageCandidates = true }) {
+function DirectoryPage({ page, filters, setFilters, loadEmployees, employees, selectedProfile, setSelectedProfile, openEmployeeProfile, downloadCandidateCv, updateStatus, setPage, returnPage = "directory", canManageCandidates = true }) {
   if (selectedProfile) {
     return (
       <CandidateProfilePage
@@ -790,7 +836,7 @@ function DirectoryPage({ page, companyForm, setCompanyForm, saveCompany, company
         </div>
         <span className="result-count">{employees.length} профилей</span>
       </div>
-      <div className={showCompanyPanel ? "jobs-layout" : "jobs-layout seeker-layout"}>
+      <div className="jobs-layout seeker-layout">
         <form className="filters-panel" onSubmit={loadEmployees}>
           <h3>Фильтры</h3>
           <Field id="query" label="Поиск по навыкам" value={filters.query} onChange={(value) => setFilters({ ...filters, query: value, skills: value })} placeholder="Frontend, React" />
@@ -811,47 +857,86 @@ function DirectoryPage({ page, companyForm, setCompanyForm, saveCompany, company
             ))
           )}
         </div>
-        {showCompanyPanel && <CompanyPanel companyForm={companyForm} setCompanyForm={setCompanyForm} companyProfile={companyProfile} companyEditing={companyEditing} setCompanyEditing={setCompanyEditing} saveCompany={saveCompany} />}
       </div>
     </section>
   );
 }
 
-function CompanyPanel({ companyForm, setCompanyForm, companyProfile, companyEditing, setCompanyEditing, saveCompany }) {
+function CompanyPage({ companyForm, setCompanyForm, companyProfile, companyEditing, setCompanyEditing, saveCompany, notice }) {
+  return (
+    <section className="company-profile-page">
+      <div className="profile-title">
+        <div>
+          <p className="eyebrow">Работодатель</p>
+          <h2>{companyProfile && !companyEditing ? "Профиль компании" : "Создать профиль компании"}</h2>
+          <p>Эта информация будет доступна соискателям на странице компании.</p>
+        </div>
+        {companyProfile && !companyEditing && (
+          <button className="button secondary" type="button" onClick={() => setCompanyEditing(true)}>Редактировать</button>
+        )}
+      </div>
+      {notice && <p className="inline-notice error" role="alert">{notice}</p>}
+      <CompanyPanel
+        companyForm={companyForm}
+        setCompanyForm={setCompanyForm}
+        companyProfile={companyProfile}
+        companyEditing={companyEditing}
+        saveCompany={saveCompany}
+      />
+    </section>
+  );
+}
+
+function CompanyPanel({ companyForm, setCompanyForm, companyProfile, companyEditing, saveCompany }) {
   if (companyProfile && !companyEditing) {
     return (
-      <aside className="company-panel">
-        <div className="card-heading-row">
-          <h3>{companyProfile.name}</h3>
-          <button className="link-button" type="button" onClick={() => setCompanyEditing(true)}>Редактировать</button>
+      <article className="company-panel company-page-card company-overview-card">
+        <div className="company-overview-header">
+          <div className="logo-mark company-logo">{companyProfile.name.slice(0, 2).toUpperCase()}</div>
+          <div>
+            <h3>{companyProfile.name}</h3>
+            {companyProfile.website && (
+              <a className="company-website" href={companyProfile.website} target="_blank" rel="noreferrer">
+                {companyProfile.website}
+              </a>
+            )}
+          </div>
         </div>
-        {companyProfile.website && <p className="profile-location">{companyProfile.website}</p>}
-        {companyProfile.description && <p>{companyProfile.description}</p>}
-        <CompanyContacts company={companyProfile} />
-        <h4>Инклюзивные условия</h4>
-        <TagList items={companyProfile.accessibilityCommitments ?? []} empty="Условия пока не указаны." />
-      </aside>
+        {companyProfile.description && <p className="company-description">{companyProfile.description}</p>}
+        <div className="company-overview-grid">
+          <section className="company-info-block">
+            <h4>Контакты</h4>
+            <CompanyContacts company={companyProfile} />
+          </section>
+          <section className="company-info-block">
+            <h4>Условия работы</h4>
+            <TagList items={companyProfile.accessibilityCommitments ?? []} empty="Условия пока не указаны." />
+          </section>
+        </div>
+      </article>
     );
   }
 
   return (
-    <aside className="company-panel">
+    <article className="company-panel company-page-card">
       <form onSubmit={saveCompany}>
         <h3>Компания</h3>
-        <Field id="companyName" label="Название" value={companyForm.name} onChange={(value) => setCompanyForm({ ...companyForm, name: value })} required />
-        <Field id="website" label="Сайт" type="url" value={companyForm.website} onChange={(value) => setCompanyForm({ ...companyForm, website: value })} />
-        <Field id="companyContactEmail" label="Email для связи" type="email" value={companyForm.contactEmail} onChange={(value) => setCompanyForm({ ...companyForm, contactEmail: value })} />
-        <Field id="companyPhone" label="Телефон" value={companyForm.phone} onChange={(value) => setCompanyForm({ ...companyForm, phone: value })} />
-        <Field id="companyMessenger" label="Мессенджер" value={companyForm.messenger} onChange={(value) => setCompanyForm({ ...companyForm, messenger: value })} placeholder="@company или номер" />
-        <TextField id="companyDescription" label="Описание" value={companyForm.description} onChange={(value) => setCompanyForm({ ...companyForm, description: value })} rows="3" />
-        <TextField id="commitments" label="Инклюзивные условия" value={companyForm.accessibilityCommitments} onChange={(value) => setCompanyForm({ ...companyForm, accessibilityCommitments: value })} rows="3" />
+        <div className="company-form-grid">
+          <Field id="companyName" label="Название" value={companyForm.name} onChange={(value) => setCompanyForm({ ...companyForm, name: value })} required className="span-2" />
+          <Field id="website" label="Сайт" type="url" value={companyForm.website} onChange={(value) => setCompanyForm({ ...companyForm, website: value })} className="span-2" />
+          <Field id="companyContactEmail" label="Email для связи" type="email" value={companyForm.contactEmail} onChange={(value) => setCompanyForm({ ...companyForm, contactEmail: value })} />
+          <Field id="companyPhone" label="Телефон" value={companyForm.phone} onChange={(value) => setCompanyForm({ ...companyForm, phone: value })} />
+          <Field id="companyMessenger" label="Мессенджер" value={companyForm.messenger} onChange={(value) => setCompanyForm({ ...companyForm, messenger: value })} placeholder="@company или номер" className="span-2" />
+          <TextField id="companyDescription" label="Описание" value={companyForm.description} onChange={(value) => setCompanyForm({ ...companyForm, description: value })} rows="4" className="span-2" />
+          <TextField id="commitments" label="Инклюзивные условия" value={companyForm.accessibilityCommitments} onChange={(value) => setCompanyForm({ ...companyForm, accessibilityCommitments: value })} rows="4" className="span-2" />
+        </div>
         <button className="button secondary full" type="submit">Сохранить компанию</button>
       </form>
-    </aside>
+    </article>
   );
 }
 
-function CompaniesPage({ companies, selectedCompany, setSelectedCompany, openCompany, loadCompanies, notice }) {
+function CompaniesPage({ companies, selectedCompany, setSelectedCompany, openCompany, loadCompanies, setPage, notice }) {
   if (selectedCompany) {
     return (
       <section className="companies-section">
@@ -861,7 +946,7 @@ function CompaniesPage({ companies, selectedCompany, setSelectedCompany, openCom
             <h2>{selectedCompany.name}</h2>
             {selectedCompany.website && <p><a href={selectedCompany.website} target="_blank" rel="noreferrer">{selectedCompany.website}</a></p>}
           </div>
-          <button className="button secondary" type="button" onClick={() => setSelectedCompany(null)}>Назад к компаниям</button>
+          <button className="button secondary" type="button" onClick={() => { setSelectedCompany(null); setPage("companies"); }}>Назад к компаниям</button>
         </div>
         {notice && <p className="inline-notice error" role="alert">{notice}</p>}
         <article className="company-detail-card">
@@ -900,7 +985,7 @@ function CompanyCard({ company, onClick }) {
   return (
     <article className="company-card compact">
       <div className="logo-mark company-logo">{company.name.slice(0, 2).toUpperCase()}</div>
-      <div>
+      <div className="company-card-body">
         <h3>{company.name}</h3>
         {company.website && <p>{company.website}</p>}
         {company.description && <p>{company.description}</p>}
@@ -999,7 +1084,7 @@ function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfil
         </form>
         <aside className="profile-side">
           <ProfileSummary profile={preview} detailed onDownloadCv={candidateProfile?.cv?.originalName ? () => downloadCandidateCv(candidateProfile) : undefined} />
-          <form className="edit-card" onSubmit={uploadCv}>
+          <form className="edit-card resume-upload-card" onSubmit={uploadCv}>
             <h3>Резюме</h3>
             <Field id="cv" name="cv" label="Файл резюме" type="file" onChange={() => {}} accept=".pdf,.doc,.docx" required />
             <button className="button secondary full" type="submit">Загрузить резюме</button>
@@ -1017,9 +1102,19 @@ function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfil
               <p className="empty-state">Просмотры пока не загружены.</p>
             ) : (
               <ul className="views-list">
-                {profileViews.map((view) => (
-                  <li key={view.id}>{view.company?.name ?? "Компания"} - {new Date(view.viewedAt).toLocaleDateString("ru-RU")}</li>
-                ))}
+                {profileViews.map((view) => {
+                  const companyId = view.company?.id ?? view.company?._id;
+                  return (
+                    <li key={view.id}>
+                      {companyId ? (
+                        <a href={`/companies/${companyId}`}>{view.company.name ?? "Компания"}</a>
+                    ) : (
+                      <span>Компания</span>
+                    )}
+                      <span>{new Date(view.viewedAt).toLocaleDateString("ru-RU")}</span>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </section>
@@ -1247,7 +1342,7 @@ function PasswordField({ id, label, value, onChange, showPassword, setShowPasswo
   );
 }
 
-function Field({ id, label, value, onChange, type = "text", ...props }) {
+function Field({ id, label, value, onChange, type = "text", className = "", ...props }) {
   const handleInvalid = (event) => {
     if (props.required && !event.currentTarget.value) {
       event.currentTarget.setCustomValidity("Заполните это поле");
@@ -1265,7 +1360,7 @@ function Field({ id, label, value, onChange, type = "text", ...props }) {
   };
 
   return (
-    <>
+    <div className={className}>
       <label htmlFor={id}>{label}</label>
       <input
         id={id}
@@ -1276,16 +1371,16 @@ function Field({ id, label, value, onChange, type = "text", ...props }) {
         onInvalid={handleInvalid}
         {...props}
       />
-    </>
+    </div>
   );
 }
 
-function TextField({ id, label, value, onChange, rows = "4" }) {
+function TextField({ id, label, value, onChange, rows = "4", className = "" }) {
   return (
-    <>
+    <div className={className}>
       <label htmlFor={id}>{label}</label>
       <textarea id={id} value={value} rows={rows} onChange={(event) => onChange(event.target.value)} />
-    </>
+    </div>
   );
 }
 

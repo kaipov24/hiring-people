@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 
-import { getCompany, getMyCompany, listCompanies, listHiredCompanies, upsertMyCompany } from "../controllers/company.controller.js";
+import { getCompany, getMyCompany, listCompanies, upsertMyCompany } from "../controllers/company.controller.js";
 import { authenticate, authorizeRoles } from "../middleware/auth.middleware.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { validateBody } from "../utils/validation.js";
@@ -21,7 +21,6 @@ const companySchema = z.object({
 });
 
 router.get("/", authenticate, asyncHandler(listCompanies));
-router.get("/hired", asyncHandler(listHiredCompanies));
 router.get("/me", authenticate, authorizeRoles("hiring_manager"), asyncHandler(getMyCompany));
 router.put("/me", authenticate, authorizeRoles("hiring_manager"), validateBody(companySchema), asyncHandler(upsertMyCompany));
 router.get("/:id", authenticate, asyncHandler(getCompany));

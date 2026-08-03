@@ -20,14 +20,6 @@ export const connectCache = async () => {
   await redisClient.connect();
 };
 
-export const getCacheClient = () => {
-  if (!redisClient?.isOpen) {
-    throw new Error("Redis client is not connected");
-  }
-
-  return redisClient;
-};
-
 export const disconnectCache = async () => {
   if (redisClient?.isOpen) {
     await redisClient.quit();

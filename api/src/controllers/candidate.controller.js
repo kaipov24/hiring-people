@@ -1,8 +1,6 @@
 import path from "node:path";
 
-import { getCacheClient } from "../config/cache.js";
 import { uploadRoot } from "../config/uploads.js";
-import { hiredCompaniesCacheKey } from "./company.controller.js";
 import { CandidateProfile } from "../models/candidate-profile.model.js";
 import { CandidateStatus, candidateStatuses } from "../models/candidate-status.model.js";
 import { Company } from "../models/company.model.js";
@@ -192,7 +190,14 @@ export const listMyProfileViews = async (req, res) => {
   res.status(200).json({
     views: views.map((view) => ({
       id: view.id,
-      company: view.company,
+      company: view.company
+        ? {
+            id: view.company.id,
+            name: view.company.name,
+            website: view.company.website,
+            accessibilityCommitments: view.company.accessibilityCommitments
+          }
+        : null,
       viewedAt: view.viewedAt
     }))
   });
@@ -241,7 +246,6 @@ export const updateCandidateStatus = async (req, res) => {
 
   if (previousStatus?.status !== "Hired" && req.body.status === "Hired") {
     await Company.findByIdAndUpdate(company.id, { $inc: { hiredCandidateCount: 1 } });
-    await getCacheClient().del(hiredCompaniesCacheKey);
   }
 
   res.status(200).json({

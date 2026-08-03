@@ -1,7 +1,4 @@
-import { getCacheClient } from "../config/cache.js";
 import { Company } from "../models/company.model.js";
-
-const hiredCompaniesCacheKey = "companies:hired";
 
 const companyPayload = (company) => ({
   id: company.id,
@@ -54,8 +51,6 @@ export const upsertMyCompany = async (req, res) => {
     }
   );
 
-  await getCacheClient().del(hiredCompaniesCacheKey);
-
   res.status(200).json({
     company: companyPayload(company)
   });
@@ -84,32 +79,3 @@ export const getCompany = async (req, res) => {
     company: companyPayload(company)
   });
 };
-
-export const listHiredCompanies = async (_req, res) => {
-  const cache = getCacheClient();
-  const cachedCompanies = await cache.get(hiredCompaniesCacheKey);
-
-  if (cachedCompanies) {
-    res.status(200).json({
-      companies: JSON.parse(cachedCompanies),
-      cached: true
-    });
-    return;
-  }
-
-  const companies = await Company.find({ hiredCandidateCount: { $gt: 0 } })
-    .sort({ hiredCandidateCount: -1, name: 1 })
-    .limit(12);
-  const payload = companies.map(companyPayload);
-
-  await cache.set(hiredCompaniesCacheKey, JSON.stringify(payload), {
-    EX: 300
-  });
-
-  res.status(200).json({
-    companies: payload,
-    cached: false
-  });
-};
-
-export { hiredCompaniesCacheKey };

@@ -24,6 +24,10 @@ Open:
 - App: http://localhost:8080
 - Local email inbox: http://localhost:8025
 
+## Email
+
+Local email goes to Mailpit by default. For real SMTP, copy `.env.example` to `.env`, set `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`, then restart the API.
+
 ## Notes
 
 This is a non-profit project. It is designed to support fairer and more accessible hiring.
