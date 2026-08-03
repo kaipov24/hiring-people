@@ -38,13 +38,13 @@ const statusSchema = z.object({
   status: z.enum(["Viewed", "Contacted", "Hired"])
 });
 
-router.get("/", authenticate, authorizeRoles("hiring_manager"), asyncHandler(listCandidates));
+router.get("/", authenticate, authorizeRoles("hiring_manager", "candidate"), asyncHandler(listCandidates));
 router.get("/me", authenticate, authorizeRoles("candidate"), asyncHandler(getMyCandidateProfile));
 router.put("/me", authenticate, authorizeRoles("candidate"), validateBody(profileSchema), asyncHandler(upsertMyCandidateProfile));
 router.post("/me/cv", authenticate, authorizeRoles("candidate"), cvUpload.single("cv"), asyncHandler(uploadMyCv));
 router.get("/me/views", authenticate, authorizeRoles("candidate"), asyncHandler(listMyProfileViews));
-router.get("/:id", authenticate, authorizeRoles("hiring_manager"), asyncHandler(getCandidate));
-router.get("/:id/cv", authenticate, authorizeRoles("hiring_manager"), asyncHandler(downloadCandidateCv));
+router.get("/:id", authenticate, authorizeRoles("hiring_manager", "candidate"), asyncHandler(getCandidate));
+router.get("/:id/cv", authenticate, authorizeRoles("hiring_manager", "candidate"), asyncHandler(downloadCandidateCv));
 router.patch("/:id/status", authenticate, authorizeRoles("hiring_manager"), validateBody(statusSchema), asyncHandler(updateCandidateStatus));
 
 export default router;

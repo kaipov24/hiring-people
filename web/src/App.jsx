@@ -30,6 +30,9 @@ const emptyCompanyForm = {
   name: "",
   description: "",
   website: "",
+  contactEmail: "",
+  phone: "",
+  messenger: "",
   accessibilityCommitments: ""
 };
 const emptyFilters = { query: "", location: "", skills: "", languages: "" };
@@ -124,6 +127,8 @@ function App() {
   const [filters, setFilters] = useState(emptyFilters);
   const [employees, setEmployees] = useState([]);
   const [selectedProfile, setSelectedProfile] = useState(null);
+  const [companies, setCompanies] = useState([]);
+  const [selectedCompany, setSelectedCompany] = useState(null);
 
   const user = session?.user;
   const token = session?.token;
@@ -141,6 +146,7 @@ function App() {
     setPageState(nextPage);
     window.history.replaceState(null, "", nextPage === "home" ? "/" : `/#${nextPage}`);
     setSelectedProfile(null);
+    setSelectedCompany(null);
     setFormNotice("");
   };
 
@@ -178,7 +184,7 @@ function App() {
   }, [user?.id, user?.role]);
 
   useEffect(() => {
-    if (!isManager || !token) return;
+    if ((!isManager && !isCandidate) || !token) return;
 
     const loadCandidateRoute = async () => {
       const candidateId = readCandidateRoute();
@@ -190,7 +196,7 @@ function App() {
         setPageState("candidate");
       } catch (error) {
         setFormNotice(error.message);
-        setPage("directory");
+        setPage(isManager ? "directory" : "candidates");
       }
     };
 
@@ -201,7 +207,7 @@ function App() {
       window.removeEventListener("hashchange", loadCandidateRoute);
       window.removeEventListener("popstate", loadCandidateRoute);
     };
-  }, [isManager, token]);
+  }, [isManager, isCandidate, token]);
 
   useEffect(() => {
     if (!isManager || !token) return;
@@ -214,6 +220,9 @@ function App() {
           name: company.name ?? "",
           description: company.description ?? "",
           website: company.website ?? "",
+          contactEmail: company.contacts?.email ?? "",
+          phone: company.contacts?.phone ?? "",
+          messenger: company.contacts?.messenger ?? "",
           accessibilityCommitments: (company.accessibilityCommitments ?? []).join(", ")
         });
         setCompanyEditing(false);
@@ -251,6 +260,12 @@ function App() {
         setProfileForm(emptyProfileForm);
       });
   }, [isCandidate, token]);
+
+  useEffect(() => {
+    if (!isCandidate || !token) return;
+    if (page === "candidates") loadEmployees(undefined, filters);
+    if (page === "companies") loadCompanies();
+  }, [isCandidate, token, page]);
 
   const showAuth = (mode, role = "candidate") => {
     setAuthMode(mode);
@@ -452,6 +467,12 @@ function App() {
         headers: { "Content-Type": "application/json", ...authHeaders(token) },
         body: JSON.stringify({
           ...companyForm,
+          website: companyForm.website || undefined,
+          contacts: {
+            email: companyForm.contactEmail || undefined,
+            phone: companyForm.phone || undefined,
+            messenger: companyForm.messenger || undefined
+          },
           accessibilityCommitments: toList(companyForm.accessibilityCommitments)
         })
       });
@@ -488,6 +509,24 @@ function App() {
       setSelectedProfile(data.candidate);
       setPageState("candidate");
       window.history.pushState(null, "", `/candidates/${employee.id}`);
+    } catch (error) {
+      setFormNotice(error.message);
+    }
+  };
+
+  const loadCompanies = async () => {
+    try {
+      const data = await request("/api/companies", { headers: authHeaders(token) });
+      setCompanies(data.companies ?? []);
+    } catch (error) {
+      setFormNotice(error.message);
+    }
+  };
+
+  const openCompany = async (company) => {
+    try {
+      const data = await request(`/api/companies/${company.id}`, { headers: authHeaders(token) });
+      setSelectedCompany(data.company);
     } catch (error) {
       setFormNotice(error.message);
     }
@@ -541,6 +580,8 @@ function App() {
             downloadCandidateCv={downloadCandidateCv}
             updateStatus={updateStatus}
             setPage={setPage}
+            showCompanyPanel
+            canManageCandidates
           />
         )}
         {isCandidate && page === "profile" && (
@@ -556,6 +597,33 @@ function App() {
             uploadCv={uploadCv}
             profileViews={profileViews}
             loadProfileViews={loadProfileViews}
+            downloadCandidateCv={downloadCandidateCv}
+            notice={formNotice}
+          />
+        )}
+        {isCandidate && (page === "candidates" || page === "candidate") && (
+          <DirectoryPage
+            page={page}
+            filters={filters}
+            setFilters={setFilters}
+            loadEmployees={loadEmployees}
+            employees={employees}
+            selectedProfile={selectedProfile}
+            setSelectedProfile={setSelectedProfile}
+            openEmployeeProfile={openEmployeeProfile}
+            setPage={setPage}
+            returnPage="candidates"
+            showCompanyPanel={false}
+            canManageCandidates={false}
+          />
+        )}
+        {isCandidate && page === "companies" && (
+          <CompaniesPage
+            companies={companies}
+            selectedCompany={selectedCompany}
+            setSelectedCompany={setSelectedCompany}
+            openCompany={openCompany}
+            loadCompanies={loadCompanies}
             notice={formNotice}
           />
         )}
@@ -563,8 +631,10 @@ function App() {
       </main>
 
       <footer className="site-footer">
-        <span>{YEAR}</span>
-        <span>Некоммерческий сайт для поддержки инклюзивного трудоустройства.</span>
+        <div className="footer-inner">
+          <span>{YEAR}</span>
+          <span>Некоммерческий сайт для поддержки инклюзивного трудоустройства.</span>
+        </div>
       </footer>
 
       {authOpen && (
@@ -599,6 +669,8 @@ function Header({ user, page, isCandidate, isManager, setPage, showAuth, signOut
       <nav aria-label="Главная навигация">
         {isManager && <button type="button" className={page === "directory" ? "nav-active" : ""} onClick={() => setPage("directory")}>Кандидаты</button>}
         {isCandidate && <button type="button" className={page === "profile" ? "nav-active" : ""} onClick={() => setPage("profile")}>Мой профиль</button>}
+        {isCandidate && <button type="button" className={page === "candidates" || page === "candidate" ? "nav-active" : ""} onClick={() => setPage("candidates")}>Кандидаты</button>}
+        {isCandidate && <button type="button" className={page === "companies" ? "nav-active" : ""} onClick={() => setPage("companies")}>Компании</button>}
       </nav>
       <div className="header-actions">
         {user ? (
@@ -623,11 +695,19 @@ function Hero({ user, isCandidate, isManager, page, showAuth, setPage }) {
     ? "Найм людей с инвалидностью в Бишкеке"
     : isManager
       ? "Профили соискателей"
+      : page === "candidates"
+        ? "Профили соискателей"
+        : page === "companies"
+          ? "Компании"
       : "Ваш профиль соискателя";
   const text = publicHero
     ? "Работодатели находят сильных специалистов, соискатели показывают опыт, навыки и удобный формат работы."
     : isManager
       ? "Используйте поиск, фильтры и карточки кандидатов, чтобы быстро найти человека под роль и открыть полный профиль."
+      : page === "candidates"
+        ? "Смотрите примеры профилей, навыки и форматы работы других соискателей."
+        : page === "companies"
+          ? "Изучайте компании, условия, контакты и подход к инклюзивному найму."
       : "Заполните профиль так, чтобы работодатель сразу понял ваш опыт, формат работы и условия доступности.";
 
   return (
@@ -677,17 +757,18 @@ function LegalNote() {
   );
 }
 
-function DirectoryPage({ page, companyForm, setCompanyForm, saveCompany, companyProfile, companyEditing, setCompanyEditing, filters, setFilters, loadEmployees, employees, selectedProfile, setSelectedProfile, openEmployeeProfile, downloadCandidateCv, updateStatus, setPage }) {
+function DirectoryPage({ page, companyForm, setCompanyForm, saveCompany, companyProfile, companyEditing, setCompanyEditing, filters, setFilters, loadEmployees, employees, selectedProfile, setSelectedProfile, openEmployeeProfile, downloadCandidateCv, updateStatus, setPage, returnPage = "directory", showCompanyPanel = true, canManageCandidates = true }) {
   if (selectedProfile) {
     return (
       <CandidateProfilePage
         profile={selectedProfile}
         onBack={() => {
           setSelectedProfile(null);
-          setPage("directory");
+          setPage(returnPage);
         }}
         downloadCandidateCv={downloadCandidateCv}
         updateStatus={updateStatus}
+        canManageCandidates={canManageCandidates}
       />
     );
   }
@@ -709,10 +790,10 @@ function DirectoryPage({ page, companyForm, setCompanyForm, saveCompany, company
         </div>
         <span className="result-count">{employees.length} профилей</span>
       </div>
-      <div className="jobs-layout">
+      <div className={showCompanyPanel ? "jobs-layout" : "jobs-layout seeker-layout"}>
         <form className="filters-panel" onSubmit={loadEmployees}>
           <h3>Фильтры</h3>
-          <Field id="query" label="Поиск по навыкам" value={filters.query} onChange={(value) => setFilters({ ...filters, query: value, skills: value })} placeholder="DevOps, React" />
+          <Field id="query" label="Поиск по навыкам" value={filters.query} onChange={(value) => setFilters({ ...filters, query: value, skills: value })} placeholder="Frontend, React" />
           <Field id="location" label="Локация" value={filters.location} onChange={(value) => setFilters({ ...filters, location: value })} placeholder="Бишкек, Ош, удаленно" />
           <Field id="skills" label="Навыки" value={filters.skills} onChange={(value) => setFilters({ ...filters, skills: value, query: value })} placeholder="SQL, QA, Node.js" />
           <Field id="languages" label="Языки" value={filters.languages} onChange={(value) => setFilters({ ...filters, languages: value })} placeholder="русский, кыргызча" />
@@ -730,7 +811,7 @@ function DirectoryPage({ page, companyForm, setCompanyForm, saveCompany, company
             ))
           )}
         </div>
-        <CompanyPanel companyForm={companyForm} setCompanyForm={setCompanyForm} companyProfile={companyProfile} companyEditing={companyEditing} setCompanyEditing={setCompanyEditing} saveCompany={saveCompany} />
+        {showCompanyPanel && <CompanyPanel companyForm={companyForm} setCompanyForm={setCompanyForm} companyProfile={companyProfile} companyEditing={companyEditing} setCompanyEditing={setCompanyEditing} saveCompany={saveCompany} />}
       </div>
     </section>
   );
@@ -746,6 +827,7 @@ function CompanyPanel({ companyForm, setCompanyForm, companyProfile, companyEdit
         </div>
         {companyProfile.website && <p className="profile-location">{companyProfile.website}</p>}
         {companyProfile.description && <p>{companyProfile.description}</p>}
+        <CompanyContacts company={companyProfile} />
         <h4>Инклюзивные условия</h4>
         <TagList items={companyProfile.accessibilityCommitments ?? []} empty="Условия пока не указаны." />
       </aside>
@@ -758,6 +840,9 @@ function CompanyPanel({ companyForm, setCompanyForm, companyProfile, companyEdit
         <h3>Компания</h3>
         <Field id="companyName" label="Название" value={companyForm.name} onChange={(value) => setCompanyForm({ ...companyForm, name: value })} required />
         <Field id="website" label="Сайт" type="url" value={companyForm.website} onChange={(value) => setCompanyForm({ ...companyForm, website: value })} />
+        <Field id="companyContactEmail" label="Email для связи" type="email" value={companyForm.contactEmail} onChange={(value) => setCompanyForm({ ...companyForm, contactEmail: value })} />
+        <Field id="companyPhone" label="Телефон" value={companyForm.phone} onChange={(value) => setCompanyForm({ ...companyForm, phone: value })} />
+        <Field id="companyMessenger" label="Мессенджер" value={companyForm.messenger} onChange={(value) => setCompanyForm({ ...companyForm, messenger: value })} placeholder="@company или номер" />
         <TextField id="companyDescription" label="Описание" value={companyForm.description} onChange={(value) => setCompanyForm({ ...companyForm, description: value })} rows="3" />
         <TextField id="commitments" label="Инклюзивные условия" value={companyForm.accessibilityCommitments} onChange={(value) => setCompanyForm({ ...companyForm, accessibilityCommitments: value })} rows="3" />
         <button className="button secondary full" type="submit">Сохранить компанию</button>
@@ -766,7 +851,91 @@ function CompanyPanel({ companyForm, setCompanyForm, companyProfile, companyEdit
   );
 }
 
-function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfileForm, profileLists, candidateProfile, saveProfile, uploadCv, profileViews, loadProfileViews, notice }) {
+function CompaniesPage({ companies, selectedCompany, setSelectedCompany, openCompany, loadCompanies, notice }) {
+  if (selectedCompany) {
+    return (
+      <section className="companies-section">
+        <div className="profile-title">
+          <div>
+            <p className="eyebrow">Компания</p>
+            <h2>{selectedCompany.name}</h2>
+            {selectedCompany.website && <p><a href={selectedCompany.website} target="_blank" rel="noreferrer">{selectedCompany.website}</a></p>}
+          </div>
+          <button className="button secondary" type="button" onClick={() => setSelectedCompany(null)}>Назад к компаниям</button>
+        </div>
+        {notice && <p className="inline-notice error" role="alert">{notice}</p>}
+        <article className="company-detail-card">
+          {selectedCompany.description && <p>{selectedCompany.description}</p>}
+          <CompanyContacts company={selectedCompany} />
+          <h3>Инклюзивные условия</h3>
+          <TagList items={selectedCompany.accessibilityCommitments ?? []} empty="Условия пока не указаны." />
+        </article>
+      </section>
+    );
+  }
+
+  return (
+    <section className="companies-section">
+      <div className="results-top">
+        <div>
+          <p className="eyebrow">Работодатели</p>
+          <h2>Компании</h2>
+          <p>Посмотрите описание компании, контакты и условия для инклюзивной работы.</p>
+        </div>
+        <button className="button quiet" type="button" onClick={loadCompanies}>Обновить</button>
+      </div>
+      {notice && <p className="inline-notice error" role="alert">{notice}</p>}
+      <div className="company-list-grid">
+        {companies.length === 0 ? (
+          <p className="empty-state">Компании пока не добавлены.</p>
+        ) : (
+          companies.map((company) => <CompanyCard key={company.id} company={company} onClick={() => openCompany(company)} />)
+        )}
+      </div>
+    </section>
+  );
+}
+
+function CompanyCard({ company, onClick }) {
+  return (
+    <article className="company-card compact">
+      <div className="logo-mark company-logo">{company.name.slice(0, 2).toUpperCase()}</div>
+      <div>
+        <h3>{company.name}</h3>
+        {company.website && <p>{company.website}</p>}
+        {company.description && <p>{company.description}</p>}
+        <CompanyContacts company={company} compact />
+        <button className="button primary card-action" type="button" onClick={onClick}>Подробнее</button>
+      </div>
+    </article>
+  );
+}
+
+function CompanyContacts({ company, compact = false }) {
+  const contacts = company?.contacts ?? {};
+  const items = [
+    contacts.email && ["Email", contacts.email, `mailto:${contacts.email}`],
+    contacts.phone && ["Телефон", contacts.phone, `tel:${contacts.phone}`],
+    contacts.messenger && ["Мессенджер", contacts.messenger]
+  ].filter(Boolean);
+
+  if (items.length === 0) {
+    return compact ? null : <p className="empty-inline">Контакты пока не указаны.</p>;
+  }
+
+  return (
+    <ul className="contact-list">
+      {items.map(([label, value, href]) => (
+        <li key={label}>
+          <span>{label}</span>
+          {href ? <a href={href}>{value}</a> : <strong>{value}</strong>}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfileForm, profileLists, candidateProfile, saveProfile, uploadCv, profileViews, loadProfileViews, downloadCandidateCv, notice }) {
   const preview = {
     user,
     ...candidateProfile,
@@ -804,7 +973,7 @@ function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfil
           </section>
           <section className="edit-card">
             <h3>Профессиональный профиль</h3>
-            <Field id="headline" label="Профессиональный заголовок" value={profileForm.headline} onChange={(value) => setProfileForm({ ...profileForm, headline: value })} placeholder="Например: DevOps инженер" />
+            <Field id="headline" label="Профессиональный заголовок" value={profileForm.headline} onChange={(value) => setProfileForm({ ...profileForm, headline: value })} placeholder="Например: Frontend разработчик" />
             <TextField id="summary" label="Опыт и сильные стороны" value={profileForm.summary} onChange={(value) => setProfileForm({ ...profileForm, summary: value })} rows="5" />
             <Field id="skills" label="Навыки через запятую" value={profileForm.skills} onChange={(value) => setProfileForm({ ...profileForm, skills: value })} />
             <Field id="languages" label="Языки через запятую" value={profileForm.languages} onChange={(value) => setProfileForm({ ...profileForm, languages: value })} />
@@ -829,11 +998,14 @@ function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfil
           <button className="button primary wide" type="submit">Сохранить профиль</button>
         </form>
         <aside className="profile-side">
-          <ProfileSummary profile={preview} detailed />
+          <ProfileSummary profile={preview} detailed onDownloadCv={candidateProfile?.cv?.originalName ? () => downloadCandidateCv(candidateProfile) : undefined} />
           <form className="edit-card" onSubmit={uploadCv}>
             <h3>Резюме</h3>
             <Field id="cv" name="cv" label="Файл резюме" type="file" onChange={() => {}} accept=".pdf,.doc,.docx" required />
             <button className="button secondary full" type="submit">Загрузить резюме</button>
+            {candidateProfile?.cv?.originalName && (
+              <button className="button primary full" type="button" onClick={() => downloadCandidateCv(candidateProfile)}>Скачать резюме</button>
+            )}
             <p className="hint">{candidateProfile?.cv?.originalName ?? "Резюме пока не загружено."}</p>
           </form>
           <section className="edit-card">
@@ -883,11 +1055,11 @@ function CandidateCard({ candidate, onClick, preview = false }) {
     </>
   );
 
-  if (preview) return <article className="candidate-card">{body}</article>;
+  if (preview) return <article className="candidate-card preview">{body}</article>;
   return <article className="candidate-card interactive">{body}</article>;
 }
 
-function CandidateProfilePage({ profile, onBack, downloadCandidateCv, updateStatus }) {
+function CandidateProfilePage({ profile, onBack, downloadCandidateCv, updateStatus, canManageCandidates = true }) {
   return (
     <section className="candidate-profile-page" aria-label="Профиль кандидата">
       <div className="profile-title">
@@ -897,21 +1069,23 @@ function CandidateProfilePage({ profile, onBack, downloadCandidateCv, updateStat
         </div>
         <button className="button secondary" type="button" onClick={onBack}>Назад к профилям</button>
       </div>
-      <div className="candidate-profile-layout">
-        <ProfileSummary profile={profile} detailed />
-        <aside className="profile-actions-card">
-          <h3>Действия</h3>
-          <button className="button primary full" type="button" onClick={() => downloadCandidateCv(profile)} disabled={!profile.cv?.originalName}>
-            {profile.cv?.originalName ? "Скачать резюме" : "Резюме не загружено"}
-          </button>
-          <div className="status-actions vertical">
-            {statuses.map((status) => (
-              <button key={status} className="button secondary full" type="button" onClick={() => updateStatus(profile.id, status)}>
-                {statusLabels[status]}
-              </button>
-            ))}
-          </div>
-        </aside>
+      <div className={canManageCandidates ? "candidate-profile-layout" : "candidate-profile-layout simple"}>
+        <ProfileSummary profile={profile} detailed onDownloadCv={!canManageCandidates && profile.cv?.originalName ? () => downloadCandidateCv(profile) : undefined} />
+        {canManageCandidates && (
+          <aside className="profile-actions-card">
+            <h3>Действия</h3>
+            <button className="button primary full" type="button" onClick={() => downloadCandidateCv(profile)} disabled={!profile.cv?.originalName}>
+              {profile.cv?.originalName ? "Скачать резюме" : "Резюме не загружено"}
+            </button>
+            <div className="status-actions vertical">
+              {statuses.map((status) => (
+                <button key={status} className="button secondary full" type="button" onClick={() => updateStatus(profile.id, status)}>
+                  {statusLabels[status]}
+                </button>
+              ))}
+            </div>
+          </aside>
+        )}
       </div>
     </section>
   );
@@ -938,11 +1112,11 @@ function ProfileDrawer({ profile, onClose, updateStatus }) {
   );
 }
 
-function ProfileSummary({ profile, detailed = false }) {
+function ProfileSummary({ profile, detailed = false, onDownloadCv }) {
   const contacts = contactInfo(profile);
   const messengerLabel = contacts.messengerType === "whatsapp" ? "WhatsApp" : "Telegram";
   return (
-    <section className="profile-card">
+    <section className={detailed ? "profile-card detailed" : "profile-card"}>
       <div className="profile-avatar">{(profile?.user?.name ?? "П").slice(0, 1)}</div>
       <h3>{profile?.headline || "Профиль соискателя"}</h3>
       {profile?.location && <p className="profile-location">{profile.location}</p>}
@@ -967,7 +1141,10 @@ function ProfileSummary({ profile, detailed = false }) {
           <p className="accessibility-note">{profile.accessibilityPreferences}</p>
         </>
       )}
-      <p className="hint">{profile?.cv?.originalName ?? "Резюме можно загрузить в профиле."}</p>
+      <div className="resume-row">
+        <p className="hint">{profile?.cv?.originalName ?? "Резюме можно загрузить в профиле."}</p>
+        {onDownloadCv && <button className="button primary" type="button" onClick={onDownloadCv}>Скачать резюме</button>}
+      </div>
     </section>
   );
 }
@@ -1071,10 +1248,34 @@ function PasswordField({ id, label, value, onChange, showPassword, setShowPasswo
 }
 
 function Field({ id, label, value, onChange, type = "text", ...props }) {
+  const handleInvalid = (event) => {
+    if (props.required && !event.currentTarget.value) {
+      event.currentTarget.setCustomValidity("Заполните это поле");
+      return;
+    }
+    if (event.currentTarget.validity.typeMismatch) {
+      event.currentTarget.setCustomValidity("Проверьте формат поля");
+      return;
+    }
+    event.currentTarget.setCustomValidity("Проверьте правильность заполнения");
+  };
+
+  const handleInput = (event) => {
+    event.currentTarget.setCustomValidity("");
+  };
+
   return (
     <>
       <label htmlFor={id}>{label}</label>
-      <input id={id} type={type} value={type === "file" ? undefined : value} onChange={(event) => onChange(event.target.value)} {...props} />
+      <input
+        id={id}
+        type={type}
+        value={type === "file" ? undefined : value}
+        onChange={(event) => onChange(event.target.value)}
+        onInput={handleInput}
+        onInvalid={handleInvalid}
+        {...props}
+      />
     </>
   );
 }

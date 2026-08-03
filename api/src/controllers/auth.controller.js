@@ -28,7 +28,7 @@ export const register = async (req, res) => {
   const existingUser = await User.findOne({ email });
 
   if (existingUser) {
-    const error = new Error("An account with this email already exists");
+    const error = new Error("Аккаунт с таким email уже существует");
     error.status = 409;
     throw error;
   }
@@ -57,7 +57,7 @@ export const login = async (req, res) => {
   const user = await User.findOne({ email });
 
   if (!user) {
-    const error = new Error("Invalid email or password");
+    const error = new Error("Неверный email или пароль");
     error.status = 401;
     throw error;
   }
@@ -65,7 +65,7 @@ export const login = async (req, res) => {
   const passwordMatches = await bcrypt.compare(password, user.passwordHash);
 
   if (!passwordMatches) {
-    const error = new Error("Invalid email or password");
+    const error = new Error("Неверный email или пароль");
     error.status = 401;
     throw error;
   }
@@ -86,7 +86,7 @@ export const verifyEmail = async (req, res) => {
   const token = String(req.query.token ?? req.body.token ?? "").trim();
 
   if (!token) {
-    const error = new Error("Verification token is required");
+    const error = new Error("Токен подтверждения обязателен");
     error.status = 400;
     throw error;
   }
@@ -97,7 +97,7 @@ export const verifyEmail = async (req, res) => {
   });
 
   if (!user) {
-    const error = new Error("Verification link is invalid or expired");
+    const error = new Error("Ссылка подтверждения недействительна или устарела");
     error.status = 400;
     throw error;
   }

@@ -73,7 +73,7 @@ export const getCandidate = async (req, res) => {
   const profile = await CandidateProfile.findById(req.params.id).populate("user", "name email role");
 
   if (!profile) {
-    const error = new Error("Candidate profile not found");
+    const error = new Error("Профиль соискателя не найден");
     error.status = 404;
     throw error;
   }
@@ -97,7 +97,7 @@ export const getMyCandidateProfile = async (req, res) => {
   const profile = await CandidateProfile.findOne({ user: req.user.id }).populate("user", "name email role");
 
   if (!profile) {
-    const error = new Error("Candidate profile not found");
+    const error = new Error("Профиль соискателя не найден");
     error.status = 404;
     throw error;
   }
@@ -202,7 +202,7 @@ export const updateCandidateStatus = async (req, res) => {
   const profile = await CandidateProfile.findById(req.params.id);
 
   if (!profile) {
-    const error = new Error("Candidate profile not found");
+    const error = new Error("Профиль соискателя не найден");
     error.status = 404;
     throw error;
   }
@@ -210,7 +210,7 @@ export const updateCandidateStatus = async (req, res) => {
   const company = await Company.findOne({ owner: req.user.id });
 
   if (!company) {
-    const error = new Error("Company profile is required before updating candidate statuses");
+    const error = new Error("Заполните профиль компании перед изменением статусов");
     error.status = 400;
     throw error;
   }

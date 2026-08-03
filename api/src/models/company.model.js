@@ -24,6 +24,23 @@ const companySchema = new mongoose.Schema(
       trim: true,
       maxlength: 300
     },
+    contacts: {
+      email: {
+        type: String,
+        trim: true,
+        maxlength: 160
+      },
+      phone: {
+        type: String,
+        trim: true,
+        maxlength: 80
+      },
+      messenger: {
+        type: String,
+        trim: true,
+        maxlength: 160
+      }
+    },
     accessibilityCommitments: {
       type: [String],
       default: []

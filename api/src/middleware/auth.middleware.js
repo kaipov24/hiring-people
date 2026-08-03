@@ -7,7 +7,7 @@ export const authenticate = async (req, _res, next) => {
     const [scheme, token] = authorization.split(" ");
 
     if (scheme !== "Bearer" || !token) {
-      const error = new Error("Authentication token is required");
+      const error = new Error("Необходимо войти в аккаунт");
       error.status = 401;
       throw error;
     }
@@ -16,7 +16,7 @@ export const authenticate = async (req, _res, next) => {
     const user = await User.findById(payload.sub).select("_id email role name");
 
     if (!user) {
-      const error = new Error("Authenticated user no longer exists");
+      const error = new Error("Аккаунт больше не существует");
       error.status = 401;
       throw error;
     }
@@ -31,14 +31,14 @@ export const authenticate = async (req, _res, next) => {
 
 export const authorizeRoles = (...roles) => (req, _res, next) => {
   if (!req.user) {
-    const error = new Error("Authentication is required");
+    const error = new Error("Необходимо войти в аккаунт");
     error.status = 401;
     next(error);
     return;
   }
 
   if (!roles.includes(req.user.role)) {
-    const error = new Error("You do not have permission to access this resource");
+    const error = new Error("У вас нет доступа к этому разделу");
     error.status = 403;
     next(error);
     return;

@@ -1,6 +1,7 @@
 :root {
   color: #1c2430;
   background: #f7f7f5;
+  --page-width: 68rem;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 16px;
@@ -83,6 +84,19 @@ textarea {
   margin-bottom: 1rem;
   min-height: 46px;
   padding: 0.78rem 0.9rem;
+}
+
+select {
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #46505d 50%),
+    linear-gradient(135deg, #46505d 50%, transparent 50%);
+  background-position:
+    calc(100% - 1.15rem) 50%,
+    calc(100% - 0.78rem) 50%;
+  background-repeat: no-repeat;
+  background-size: 0.38rem 0.38rem;
+  padding-right: 2.35rem;
 }
 
 input:disabled {
@@ -250,7 +264,7 @@ main {
   gap: 2rem;
   grid-template-columns: 1fr;
   justify-self: center;
-  max-width: 68rem;
+  max-width: var(--page-width);
   min-height: 18rem;
   overflow: hidden;
   padding: clamp(1.4rem, 5vw, 3.5rem);
@@ -337,7 +351,7 @@ main {
   display: grid;
   gap: 1.5rem;
   justify-self: center;
-  max-width: 76rem;
+  max-width: var(--page-width);
   width: 100%;
 }
 
@@ -354,13 +368,14 @@ main {
   gap: 1.1rem;
   grid-template-columns: repeat(3, minmax(0, 21rem));
   justify-content: center;
-  max-width: 68rem;
+  max-width: var(--page-width);
   width: 100%;
 }
 
 .listing-stack {
   display: grid;
-  gap: 0.9rem;
+  gap: 1.1rem;
+  grid-template-columns: repeat(2, minmax(17rem, 1fr));
 }
 
 .candidate-card {
@@ -373,7 +388,7 @@ main {
   display: grid;
   gap: 0.9rem;
   grid-template-columns: 1fr;
-  min-height: 17rem;
+  height: 29.5rem;
   padding: 1.1rem;
   text-align: left;
   width: 100%;
@@ -385,8 +400,18 @@ main {
   transform: translateY(-1px);
 }
 
+.candidate-card.preview {
+  height: 23rem;
+}
+
+.candidate-card.preview .candidate-main {
+  grid-template-rows: auto minmax(5.2rem, auto) minmax(4.4rem, auto) 1fr;
+}
+
 .card-action {
-  margin-top: 0.8rem;
+  align-self: end;
+  margin-top: 0;
+  width: 100%;
 }
 
 .logo-mark {
@@ -405,6 +430,8 @@ main {
 .candidate-main {
   display: grid;
   gap: 0.75rem;
+  grid-template-rows: auto minmax(6.6rem, auto) minmax(4.8rem, auto) 1fr auto;
+  height: 100%;
   min-width: 0;
 }
 
@@ -417,6 +444,7 @@ main {
   line-height: 1.25;
   margin-bottom: 0.2rem;
   min-height: 2.7rem;
+  overflow: hidden;
 }
 
 .candidate-title-row p {
@@ -442,6 +470,8 @@ main {
   gap: 0.32rem;
   list-style: none;
   margin: 0;
+  max-height: 7.2rem;
+  overflow: hidden;
   padding: 0;
 }
 
@@ -452,11 +482,15 @@ main {
 }
 
 .tag-list {
+  align-content: flex-start;
+  align-items: flex-start;
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
   list-style: none;
   margin: 0;
+  max-height: 4.8rem;
+  overflow: hidden;
   padding: 0;
 }
 
@@ -467,6 +501,7 @@ main {
   color: #3d4650;
   font-size: 0.92rem;
   font-weight: 750;
+  line-height: 1.25;
   padding: 0.24rem 0.62rem;
 }
 
@@ -488,7 +523,7 @@ main {
   border-radius: 16px;
   color: #4f5965;
   justify-self: center;
-  max-width: 68rem;
+  max-width: var(--page-width);
   padding: 1rem 1.15rem;
 }
 
@@ -516,6 +551,10 @@ main {
   gap: 1.25rem;
   grid-template-columns: minmax(15rem, 18rem) minmax(0, 1fr) minmax(18rem, 22rem);
   min-height: 34rem;
+}
+
+.jobs-layout.seeker-layout {
+  grid-template-columns: minmax(15rem, 18rem) minmax(0, 1fr);
 }
 
 .filters-panel {
@@ -592,7 +631,7 @@ main {
   align-items: start;
   display: grid;
   gap: 1.25rem;
-  grid-template-columns: minmax(0, 1.1fr) minmax(19rem, 0.9fr);
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 0.78fr);
   min-height: 36rem;
 }
 
@@ -603,11 +642,15 @@ main {
   grid-template-columns: minmax(0, 1fr) minmax(17rem, 22rem);
 }
 
+.candidate-profile-layout.simple {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .candidate-profile-page {
   display: grid;
   gap: 1.2rem;
   justify-self: center;
-  max-width: 76rem;
+  max-width: var(--page-width);
   width: 100%;
 }
 
@@ -645,31 +688,39 @@ main {
 }
 
 .profile-card {
+  display: grid;
+  gap: 0.75rem;
   overflow: hidden;
   position: relative;
 }
 
-.profile-card::before {
-  background: linear-gradient(90deg, #245d57, #f0b34a);
-  content: "";
-  display: block;
-  height: 0.45rem;
-  inset: 0 0 auto;
-  position: absolute;
+.profile-card.detailed {
+  padding: 1.25rem;
+}
+
+.profile-card h3,
+.profile-card h4,
+.profile-card p {
+  margin-bottom: 0;
+}
+
+.profile-card h4 {
+  margin-top: 0.35rem;
 }
 
 .profile-avatar {
   align-items: center;
-  background: #245d57;
-  border-radius: 16px 5px 16px 5px;
-  color: #ffffff;
+  background: #edf1ee;
+  border: 1px solid #dce5df;
+  border-radius: 12px;
+  color: #1f2f45;
   display: inline-flex;
-  font-size: 1.8rem;
+  font-size: 1.4rem;
   font-weight: 950;
-  height: 4.5rem;
+  height: 3.5rem;
   justify-content: center;
-  margin: 0.7rem 0 1rem;
-  width: 4.5rem;
+  margin: 0 0 1rem;
+  width: 3.5rem;
 }
 
 .profile-location,
@@ -681,7 +732,7 @@ main {
   display: grid;
   gap: 0.45rem;
   list-style: none;
-  margin: 0 0 1rem;
+  margin: 0;
   padding: 0;
 }
 
@@ -710,6 +761,22 @@ main {
 
 .profile-summary-text {
   color: #303a46;
+  max-width: 68ch;
+}
+
+.resume-row {
+  align-items: center;
+  border-top: 1px solid #ece8df;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: space-between;
+  margin-top: 0.35rem;
+  padding-top: 0.9rem;
+}
+
+.resume-row .button {
+  min-width: 12rem;
 }
 
 .card-heading-row {
@@ -751,6 +818,26 @@ main {
   display: grid;
   gap: 1rem;
   grid-template-columns: auto minmax(0, 1fr);
+}
+
+.company-list-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.company-card.compact {
+  min-height: 14rem;
+}
+
+.company-detail-card {
+  background: #ffffff;
+  border: 1px solid #e4e1da;
+  border-radius: 16px;
+  box-shadow: 0 10px 28px rgb(28 36 48 / 5%);
+  display: grid;
+  gap: 1rem;
+  padding: 1.2rem;
 }
 
 .company-logo {
@@ -870,15 +957,20 @@ main {
 }
 
 .site-footer {
-  align-items: center;
   background: #1c2430;
   color: #f7efe3;
+  padding: 1.15rem clamp(1rem, 5vw, 4.5rem);
+  text-align: center;
+}
+
+.footer-inner {
+  align-items: center;
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;
   justify-content: center;
-  padding: 1.15rem clamp(1rem, 5vw, 4.5rem);
-  text-align: center;
+  margin-inline: auto;
+  max-width: var(--page-width);
 }
 
 @media (max-width: 960px) {
@@ -893,6 +985,7 @@ main {
   .site-header,
   .hero,
   .jobs-layout,
+  .jobs-layout.seeker-layout,
   .profile-grid {
     grid-template-columns: 1fr;
   }
@@ -903,8 +996,11 @@ main {
   }
 
   .listing-grid,
-  .company-grid {
+  .listing-stack,
+  .company-grid,
+  .company-list-grid {
     grid-template-columns: minmax(0, 24rem);
+    justify-content: center;
   }
 
   .filters-panel,
