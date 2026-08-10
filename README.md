@@ -52,7 +52,7 @@ Set `PUBLIC_SITE_URL=https://your-domain` before building for production so cano
 
 ## Cloud Deploy
 
-1. Provision MongoDB, Redis, persistent upload storage, and SMTP.
+1. Provision MongoDB, persistent upload storage, and SMTP.
 2. Set production secrets and environment variables from `.env.example`.
 3. Build with `PUBLIC_SITE_URL` set to the final HTTPS domain.
 4. Put TLS in front of nginx through your cloud load balancer, reverse proxy, or managed ingress.

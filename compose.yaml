@@ -28,26 +28,6 @@ services:
       retries: 5
       start_period: 30s
 
-  redis:
-    image: redis:7-alpine
-    container_name: inclusive-hire-redis
-    restart: unless-stopped
-    volumes:
-      - redis_data:/data
-    networks:
-      - inclusive_hire_net
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "5"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-
   mailpit:
     image: axllent/mailpit:v1.20
     container_name: inclusive-hire-mailpit
@@ -81,7 +61,6 @@ services:
       MONGODB_USERNAME: inclusive_hire
       MONGODB_DATABASE: inclusive_hire
       MONGODB_PASSWORD_FILE: /run/secrets/mongodb_password
-      REDIS_URL: redis://redis:6379
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
       PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:8080}
@@ -122,8 +101,6 @@ services:
       start_period: 30s
     depends_on:
       mongodb:
-        condition: service_healthy
-      redis:
         condition: service_healthy
       mailpit:
         condition: service_healthy
@@ -180,7 +157,6 @@ services:
 
 volumes:
   mongodb_data:
-  redis_data:
   api_uploads:
 
 networks:

@@ -1,5 +1,4 @@
 import app from "./app.js";
-import { connectCache, disconnectCache } from "./config/cache.js";
 import { connectDatabase, disconnectDatabase } from "./config/database.js";
 import { loadDockerSecrets } from "./config/secrets.js";
 
@@ -11,7 +10,6 @@ const start = async () => {
   loadDockerSecrets();
 
   await connectDatabase();
-  await connectCache();
 
   server = app.listen(port, () => {
     console.log(`inclusive-hire API listening on port ${port}`);
@@ -23,14 +21,12 @@ const shutdown = async (signal) => {
 
   if (server) {
     server.close(async () => {
-      await disconnectCache();
       await disconnectDatabase();
       process.exit(0);
     });
     return;
   }
 
-  await disconnectCache();
   await disconnectDatabase();
   process.exit(0);
 };
