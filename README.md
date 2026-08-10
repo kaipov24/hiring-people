@@ -76,7 +76,7 @@ Required GitHub repository variables:
 
 - `PUBLIC_SITE_URL`: public landing URL.
 - `APP_BASE_URL`: home app URL.
-- `PAGES_BASE_PATH`: `/` for a custom domain, or `/repo-name/` for a project page.
+- `PAGES_BASE_PATH`: optional. Leave empty for relative GitHub Pages assets, use `/repo-name/` only if you want an explicit project-page base path.
 
 Optional home lab tunnel:
 
