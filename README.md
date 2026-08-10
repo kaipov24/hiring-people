@@ -24,15 +24,40 @@ Open:
 - App: http://localhost:8080
 - Local email inbox: http://localhost:8025
 
-## Email
+## Environment
 
-Local email goes to Mailpit by default. For real SMTP, copy `.env.example` to `.env`, set `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`, then restart the API.
+Copy `.env.example` to `.env` for local or cloud configuration.
+
+Required production values:
+
+- `PUBLIC_SITE_URL` and `PUBLIC_APP_URL`: your HTTPS domain.
+- `JWT_EXPIRES_IN`: login session lifetime.
+- SMTP settings: `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`.
+- `ADMIN_EMAILS`: comma-separated admin account emails.
+- `secrets/mongodb_password` and `secrets/jwt_secret`: strong private values.
 
 ## Admin
 
 Create a normal account first, then add its email to `ADMIN_EMAILS` in `.env` and restart the API. Use that same account password to log in as admin.
 
 Admins can check SMTP readiness through `/api/admin/email/status` and send a test message through `/api/admin/email/test`.
+
+## SEO
+
+The public homepage is crawlable and includes canonical metadata, Open Graph/Twitter tags, JSON-LD, `robots.txt`, and `sitemap.xml`.
+
+Candidate profiles, company pages, API responses, and uploaded files are protected/private surfaces and are marked `noindex`.
+
+Set `PUBLIC_SITE_URL=https://your-domain` before building for production so canonical URLs and the sitemap use the real domain.
+
+## Cloud Deploy
+
+1. Provision MongoDB, Redis, persistent upload storage, and SMTP.
+2. Set production secrets and environment variables from `.env.example`.
+3. Build with `PUBLIC_SITE_URL` set to the final HTTPS domain.
+4. Put TLS in front of nginx through your cloud load balancer, reverse proxy, or managed ingress.
+5. Keep `/health`, `/robots.txt`, and `/sitemap.xml` publicly reachable.
+6. Configure SPF, DKIM, and DMARC for the email sender domain.
 
 ## Notes
 

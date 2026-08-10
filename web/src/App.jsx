@@ -1,8 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
+const PUBLIC_SITE_URL = (import.meta.env.VITE_PUBLIC_SITE_URL ?? window.location.origin).replace(/\/+$/, "");
 const YEAR = new Date().getFullYear();
 const statuses = ["Viewed", "Contacted", "Hired"];
+const publicSeo = {
+  title: "Найм людей с инвалидностью в Бишкеке | inclusive-hire",
+  description: "inclusive-hire Бишкек — некоммерческая платформа инклюзивного найма в Кыргызстане: работодатели могут нанять человека с инвалидностью, соискатели загружают резюме и показывают навыки.",
+  robots: "index,follow",
+  canonicalPath: "/"
+};
 
 const statusLabels = {
   Viewed: "Просмотрен",
@@ -84,6 +91,73 @@ const request = async (path, options = {}) => {
     throw error;
   }
   return data;
+};
+
+const setMetaContent = (selector, content) => {
+  const element = document.head.querySelector(selector);
+  if (element) element.setAttribute("content", content);
+};
+
+const setCanonical = (url) => {
+  let canonical = document.head.querySelector("link[rel='canonical']");
+  if (!canonical) {
+    canonical = document.createElement("link");
+    canonical.setAttribute("rel", "canonical");
+    document.head.append(canonical);
+  }
+  canonical.setAttribute("href", url);
+};
+
+const setDocumentSeo = ({ title, description, robots, canonicalPath }) => {
+  const canonicalUrl = `${PUBLIC_SITE_URL}${canonicalPath}`;
+  document.title = title;
+  setMetaContent("meta[name='description']", description);
+  setMetaContent("meta[name='robots']", robots);
+  setMetaContent("meta[property='og:title']", title);
+  setMetaContent("meta[property='og:description']", description);
+  setMetaContent("meta[property='og:url']", canonicalUrl);
+  setMetaContent("meta[name='twitter:title']", title);
+  setMetaContent("meta[name='twitter:description']", description);
+  setCanonical(canonicalUrl);
+};
+
+const seoForAppState = ({ user, page, selectedProfile, selectedCompany }) => {
+  if (!user) return publicSeo;
+
+  if (selectedProfile) {
+    return {
+      title: `${selectedProfile.user?.name ?? "Профиль соискателя"} | inclusive-hire`,
+      description: "Полный профиль соискателя доступен зарегистрированным пользователям inclusive-hire.",
+      robots: "noindex,nofollow",
+      canonicalPath: "/"
+    };
+  }
+
+  if (selectedCompany) {
+    return {
+      title: `${selectedCompany.name ?? "Профиль компании"} | inclusive-hire`,
+      description: "Профиль компании доступен зарегистрированным пользователям inclusive-hire.",
+      robots: "noindex,nofollow",
+      canonicalPath: "/"
+    };
+  }
+
+  const privateTitles = {
+    adminActivity: "Администрирование активности | inclusive-hire",
+    adminUsers: "Администрирование пользователей | inclusive-hire",
+    candidates: "Профили соискателей | inclusive-hire",
+    company: "Профиль компании | inclusive-hire",
+    companies: "Компании | inclusive-hire",
+    directory: "Профили соискателей | inclusive-hire",
+    profile: "Мой профиль соискателя | inclusive-hire"
+  };
+
+  return {
+    title: privateTitles[page] ?? "inclusive-hire",
+    description: "Рабочий раздел inclusive-hire доступен после входа в аккаунт.",
+    robots: "noindex,nofollow",
+    canonicalPath: "/"
+  };
 };
 
 const readStoredSession = () => {
@@ -202,6 +276,10 @@ function App() {
       setAuthOpen(true);
     }
   }, []);
+
+  useEffect(() => {
+    setDocumentSeo(seoForAppState({ user, page, selectedProfile, selectedCompany }));
+  }, [user?.id, page, selectedProfile?.id, selectedCompany?.id]);
 
   useEffect(() => {
     if (session) window.localStorage.setItem("inclusive-hire-session", JSON.stringify(session));

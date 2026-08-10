@@ -134,6 +134,8 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
+      args:
+        PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-http://localhost:8080}
     restart: unless-stopped
     networks:
       - inclusive_hire_net

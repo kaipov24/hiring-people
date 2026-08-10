@@ -2,7 +2,7 @@ FROM inclusive-hire-api-base:latest AS dependencies
 
 USER root
 COPY package*.json ./
-RUN npm install --omit=dev
+RUN npm ci --omit=dev
 
 FROM inclusive-hire-api-base:latest AS runtime
 

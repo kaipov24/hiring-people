@@ -2,9 +2,13 @@ FROM inclusive-hire-web-base:latest AS dependencies
 
 USER root
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
 FROM dependencies AS build
+
+ARG PUBLIC_SITE_URL=http://localhost:8080
+ENV PUBLIC_SITE_URL=$PUBLIC_SITE_URL
+ENV VITE_PUBLIC_SITE_URL=$PUBLIC_SITE_URL
 
 COPY . .
 RUN npm run build
