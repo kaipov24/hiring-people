@@ -296,18 +296,32 @@ main {
 
 .hero-content {
   align-self: center;
+  display: grid;
+  justify-items: center;
   justify-self: center;
+  gap: 0.9rem;
   max-width: 54rem;
   position: relative;
   text-align: center;
+  width: min(100%, 54rem);
   z-index: 1;
 }
 
 .hero-content p {
   color: #e5efe9;
   font-size: 1rem;
+  margin: 0;
   margin-inline: auto;
   max-width: 54ch;
+}
+
+.hero-content h1 {
+  margin: 0;
+}
+
+.hero-content > .button {
+  justify-self: center;
+  min-width: 15rem;
 }
 
 .eyebrow {
