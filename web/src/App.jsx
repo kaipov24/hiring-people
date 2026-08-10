@@ -162,6 +162,7 @@ function App() {
   const [adminUsers, setAdminUsers] = useState([]);
   const [adminActivity, setAdminActivity] = useState(null);
   const [adminNotice, setAdminNotice] = useState("");
+  const [adminResetState, setAdminResetState] = useState({});
 
   const user = session?.user;
   const token = session?.token;
@@ -685,6 +686,7 @@ function App() {
 
   const loadAdminUsers = async () => {
     setAdminNotice("");
+    setAdminResetState({});
     try {
       const data = await request("/api/admin/users", { headers: authHeaders(token) });
       setAdminUsers(data.users ?? []);
@@ -705,14 +707,24 @@ function App() {
 
   const sendAdminPasswordReset = async (userId) => {
     setAdminNotice("");
+    setAdminResetState((current) => ({
+      ...current,
+      [userId]: { status: "loading", message: "Отправляем ссылку..." }
+    }));
     try {
       const data = await request(`/api/admin/users/${userId}/password-reset`, {
         method: "POST",
         headers: authHeaders(token)
       });
-      setAdminNotice(data.message ?? "Ссылка отправлена.");
+      setAdminResetState((current) => ({
+        ...current,
+        [userId]: { status: "success", message: data.message ?? "Ссылка отправлена на email." }
+      }));
     } catch (error) {
-      setAdminNotice(error.message);
+      setAdminResetState((current) => ({
+        ...current,
+        [userId]: { status: "error", message: error.message }
+      }));
     }
   };
 
@@ -739,6 +751,7 @@ function App() {
             users={adminUsers}
             activity={adminActivity}
             notice={adminNotice}
+            resetState={adminResetState}
             loadUsers={loadAdminUsers}
             loadActivity={loadAdminActivity}
             sendPasswordReset={sendAdminPasswordReset}
@@ -932,7 +945,7 @@ function Hero({ user, isCandidate, isManager, isAdmin, page, showAuth, setPage }
   );
 }
 
-function AdminPage({ page, users, activity, notice, loadUsers, loadActivity, sendPasswordReset }) {
+function AdminPage({ page, users, activity, notice, resetState, loadUsers, loadActivity, sendPasswordReset }) {
   const metrics = activity
     ? [
         ["Всего пользователей", activity.totalUsers],
@@ -970,18 +983,12 @@ function AdminPage({ page, users, activity, notice, loadUsers, loadActivity, sen
             </thead>
             <tbody>
               {users.map((item) => (
-                <tr key={item.id}>
-                  <td>{item.name}</td>
-                  <td>{item.email}</td>
-                  <td>{roleLabels[item.role] ?? item.role}</td>
-                  <td>{item.emailVerified ? "Подтвержден" : "Email не подтвержден"}</td>
-                  <td>{new Date(item.createdAt).toLocaleDateString("ru-RU")}</td>
-                  <td>
-                    <button className="button quiet compact" type="button" onClick={() => sendPasswordReset(item.id)}>
-                      Сбросить пароль
-                    </button>
-                  </td>
-                </tr>
+                <AdminUserRow
+                  key={item.id}
+                  user={item}
+                  resetState={resetState[item.id]}
+                  sendPasswordReset={sendPasswordReset}
+                />
               ))}
             </tbody>
           </table>
@@ -1009,6 +1016,43 @@ function AdminPage({ page, users, activity, notice, loadUsers, loadActivity, sen
         ))}
       </div>
     </section>
+  );
+}
+
+function AdminUserRow({ user, resetState, sendPasswordReset }) {
+  const isSending = resetState?.status === "loading";
+  const isError = resetState?.status === "error";
+
+  return (
+    <tr>
+      <td>
+        <div className="admin-user-cell">
+          <span>{user.name}</span>
+          {user.isTestUser && <span className="test-user-tag">Тестовый пользователь</span>}
+        </div>
+      </td>
+      <td className="admin-email-cell">{user.email}</td>
+      <td>{roleLabels[user.role] ?? user.role}</td>
+      <td>{user.emailVerified ? "Подтвержден" : "Email не подтвержден"}</td>
+      <td>{new Date(user.createdAt).toLocaleDateString("ru-RU")}</td>
+      <td>
+        <div className="admin-action-cell">
+          <button
+            className="button quiet compact"
+            type="button"
+            disabled={isSending}
+            onClick={() => sendPasswordReset(user.id)}
+          >
+            {isSending ? "Отправляем..." : "Сбросить пароль"}
+          </button>
+          {resetState?.message && (
+            <span className={isError ? "row-status error" : "row-status"} role="status">
+              {resetState.message}
+            </span>
+          )}
+        </div>
+      </td>
+    </tr>
   );
 }
 

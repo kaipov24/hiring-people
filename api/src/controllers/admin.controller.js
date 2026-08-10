@@ -6,11 +6,24 @@ import { CandidateProfile } from "../models/candidate-profile.model.js";
 import { Company } from "../models/company.model.js";
 import { User } from "../models/user.model.js";
 
+const testUserEmailPatterns = [
+  /^seed\./,
+  /^company\./,
+  /^walkthrough\./,
+  /\+e2e@/,
+  /@example\.com$/
+];
+
+const isTestUser = (user) => {
+  return testUserEmailPatterns.some((pattern) => pattern.test(user.email));
+};
+
 const userPayload = (user) => ({
   id: user.id,
   name: user.name,
   email: user.email,
   role: user.role,
+  isTestUser: isTestUser(user),
   emailVerified: user.emailVerified !== false,
   createdAt: user.createdAt,
   updatedAt: user.updatedAt
