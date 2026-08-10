@@ -18,6 +18,12 @@ const seoPlugin = () => ({
   generateBundle() {
     this.emitFile({
       type: "asset",
+      fileName: ".nojekyll",
+      source: ""
+    });
+
+    this.emitFile({
+      type: "asset",
       fileName: "robots.txt",
       source: [
         "User-agent: *",
@@ -47,5 +53,6 @@ const seoPlugin = () => ({
 });
 
 export default defineConfig({
+  base: process.env.VITE_BASE_PATH || "/",
   plugins: [react(), seoPlugin()]
 });

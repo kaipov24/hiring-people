@@ -59,6 +59,33 @@ Set `PUBLIC_SITE_URL=https://your-domain` before building for production so cano
 5. Keep `/health`, `/robots.txt`, and `/sitemap.xml` publicly reachable.
 6. Configure SPF, DKIM, and DMARC for the email sender domain.
 
+## GitHub Pages + Home Lab
+
+You can keep the public landing page on GitHub Pages and run the private app/API from a home lab server.
+
+- Landing page: build with `VITE_DEPLOY_TARGET=landing`.
+- Home app: build normally with `VITE_DEPLOY_TARGET=app`.
+- `VITE_APP_BASE_URL` should point to the home app domain, for example `https://app.your-domain.com`.
+- The landing page checks `VITE_APP_BASE_URL/health`.
+- If the home server is online, login and registration buttons link to the app.
+- If the home server is offline, the landing page stays online but disables login/registration.
+
+GitHub Pages workflow: `.github/workflows/deploy-landing.yml`.
+
+Required GitHub repository variables:
+
+- `PUBLIC_SITE_URL`: public landing URL.
+- `APP_BASE_URL`: home app URL.
+- `PAGES_BASE_PATH`: `/` for a custom domain, or `/repo-name/` for a project page.
+
+Optional home lab tunnel:
+
+```bash
+docker compose -f compose.yaml -f compose.homelab.yaml up -d
+```
+
+Set `CLOUDFLARE_TUNNEL_TOKEN` in `.env` before using the tunnel override.
+
 ## Notes
 
 This is a non-profit project. It is designed to support fairer and more accessible hiring.

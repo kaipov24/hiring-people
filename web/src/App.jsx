@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 const PUBLIC_SITE_URL = (import.meta.env.VITE_PUBLIC_SITE_URL ?? window.location.origin).replace(/\/+$/, "");
+const DEPLOY_TARGET = import.meta.env.VITE_DEPLOY_TARGET ?? "app";
+const IS_LANDING = DEPLOY_TARGET === "landing";
+const APP_BASE_URL = (import.meta.env.VITE_APP_BASE_URL || PUBLIC_SITE_URL).replace(/\/+$/, "");
 const YEAR = new Date().getFullYear();
 const statuses = ["Viewed", "Contacted", "Hired"];
 const publicSeo = {
@@ -81,6 +84,7 @@ const contactInfo = (profile) => ({
   messengerType: profile?.contacts?.messengerType || "telegram",
   messenger: profile?.contacts?.messenger || "@inclusive_hire"
 });
+const authUrl = (mode, role = "candidate") => `${APP_BASE_URL}/#${mode}?role=${role}`;
 
 const request = async (path, options = {}) => {
   const response = await fetch(`${API_BASE_URL}${path}`, options);
@@ -184,9 +188,11 @@ const readAuthLink = () => {
   const [route, query = ""] = hash.slice(1).split("?");
   const params = new URLSearchParams(query || window.location.search);
   const token = params.get("token") ?? "";
+  const role = params.get("role") === "hiring_manager" ? "hiring_manager" : "candidate";
 
   if (route === "reset-password" && token) return { mode: "reset", token };
   if (route === "verify-email" && token) return { mode: "verify", token };
+  if (route === "login" || route === "register") return { mode: route, role };
   return null;
 };
 
@@ -209,8 +215,9 @@ const readCompanyRoute = () => {
 };
 
 function App() {
-  const [session, setSession] = useState(readStoredSession);
+  const [session, setSession] = useState(IS_LANDING ? null : readStoredSession);
   const [page, setPageState] = useState("home");
+  const [appHealth, setAppHealth] = useState(IS_LANDING ? "checking" : "online");
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState("login");
   const [authForm, setAuthForm] = useState(emptyAuthForm);
@@ -275,6 +282,27 @@ function App() {
       setAuthMode("verify");
       setAuthOpen(true);
     }
+
+    if (!IS_LANDING && (authLink.mode === "login" || authLink.mode === "register")) {
+      showAuth(authLink.mode, authLink.role);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!IS_LANDING) return;
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 3500);
+
+    fetch(`${APP_BASE_URL}/health`, { signal: controller.signal })
+      .then((response) => setAppHealth(response.ok ? "online" : "offline"))
+      .catch(() => setAppHealth("offline"))
+      .finally(() => window.clearTimeout(timeout));
+
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
   }, []);
 
   useEffect(() => {
@@ -413,11 +441,13 @@ function App() {
   }, [user?.id, token]);
 
   useEffect(() => {
+    if (IS_LANDING) return;
     if (user || page !== "home") return;
     recordPageView("home");
   }, [page, user?.id]);
 
   useEffect(() => {
+    if (IS_LANDING) return;
     if (!user) return;
     recordPageView("home");
   }, [user?.id]);
@@ -818,10 +848,12 @@ function App() {
         setPage={setPage}
         showAuth={showAuth}
         signOut={signOut}
+        appHealth={appHealth}
       />
 
       <main id="main-content">
-        {page !== "candidate" && <Hero user={user} isCandidate={isCandidate} isManager={isManager} isAdmin={isAdmin} page={page} showAuth={showAuth} setPage={setPage} />}
+        {page !== "candidate" && <Hero user={user} isCandidate={isCandidate} isManager={isManager} isAdmin={isAdmin} page={page} showAuth={showAuth} setPage={setPage} appHealth={appHealth} />}
+        {!user && IS_LANDING && <LandingAvailability appHealth={appHealth} />}
         {!user && <PublicHome />}
         {isAdmin && (page === "adminUsers" || page === "adminActivity") && (
           <AdminPage
@@ -917,7 +949,7 @@ function App() {
         </div>
       </footer>
 
-      {authOpen && (
+      {!IS_LANDING && authOpen && (
         <AuthModal
           authForm={authForm}
           authMode={authMode}
@@ -941,7 +973,7 @@ function App() {
   );
 }
 
-function Header({ user, page, isCandidate, isManager, isAdmin, setPage, showAuth, signOut }) {
+function Header({ user, page, isCandidate, isManager, isAdmin, setPage, showAuth, signOut, appHealth }) {
   const openStartPage = () => setPage(isAdmin ? "adminActivity" : isManager ? "directory" : isCandidate ? "profile" : "home");
   return (
     <header className="site-header">
@@ -963,8 +995,8 @@ function Header({ user, page, isCandidate, isManager, isAdmin, setPage, showAuth
           </>
         ) : (
           <>
-            <button className="button secondary" type="button" onClick={() => showAuth("login")}>Войти</button>
-            <button className="button primary" type="button" onClick={() => showAuth("register")}>Регистрация</button>
+            <LandingAwareAction mode="login" label="Войти" variant="secondary" role="candidate" appHealth={appHealth} showAuth={showAuth} />
+            <LandingAwareAction mode="register" label="Регистрация" variant="primary" role="candidate" appHealth={appHealth} showAuth={showAuth} />
           </>
         )}
       </div>
@@ -972,7 +1004,7 @@ function Header({ user, page, isCandidate, isManager, isAdmin, setPage, showAuth
   );
 }
 
-function Hero({ user, isCandidate, isManager, isAdmin, page, showAuth, setPage }) {
+function Hero({ user, isCandidate, isManager, isAdmin, page, showAuth, setPage, appHealth }) {
   const publicHero = !user;
   const title = publicHero
     ? "Найм людей с инвалидностью в Бишкеке"
@@ -1013,12 +1045,45 @@ function Hero({ user, isCandidate, isManager, isAdmin, page, showAuth, setPage }
         <p>{text}</p>
         {publicHero && (
           <div className="hero-actions">
-            <button className="button primary" type="button" onClick={() => showAuth("login", "hiring_manager")}>Найти сотрудника</button>
-            <button className="button secondary" type="button" onClick={() => showAuth("login", "candidate")}>Загрузить резюме</button>
+            <LandingAwareAction mode="login" label="Найти сотрудника" variant="primary" role="hiring_manager" appHealth={appHealth} showAuth={showAuth} />
+            <LandingAwareAction mode="login" label="Загрузить резюме" variant="secondary" role="candidate" appHealth={appHealth} showAuth={showAuth} />
           </div>
         )}
         {isCandidate && <button className="button primary" type="button" onClick={() => setPage("profile")}>Редактировать профиль</button>}
       </div>
+    </section>
+  );
+}
+
+function LandingAwareAction({ mode, label, variant, role, appHealth, showAuth }) {
+  const className = `button ${variant}`;
+
+  if (!IS_LANDING) {
+    return <button className={className} type="button" onClick={() => showAuth(mode, role)}>{label}</button>;
+  }
+
+  if (appHealth === "online") {
+    return <a className={className} href={authUrl(mode, role)}>{label}</a>;
+  }
+
+  return (
+    <button className={className} type="button" disabled>
+      {appHealth === "checking" ? "Проверяем доступ" : label}
+    </button>
+  );
+}
+
+function LandingAvailability({ appHealth }) {
+  const copy = appHealth === "online"
+    ? "Домашний сервер сейчас онлайн: регистрация, вход и email-ссылки работают."
+    : appHealth === "checking"
+      ? "Проверяем доступность домашнего сервера для регистрации и входа."
+      : "Сервер сейчас офлайн, потому что DevOps спит. Попробуйте зайти снова с 09:00 до 23:00 UTC+6. Главная страница доступна, но регистрация, вход и email-ссылки временно недоступны.";
+
+  return (
+    <section className={`landing-status landing-status-${appHealth}`} aria-live="polite">
+      <span>{appHealth === "online" ? "Онлайн" : appHealth === "checking" ? "Проверка" : "Офлайн"}</span>
+      <p>{copy}</p>
     </section>
   );
 }
