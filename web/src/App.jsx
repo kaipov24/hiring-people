@@ -6,7 +6,8 @@ const DEPLOY_TARGET = import.meta.env.VITE_DEPLOY_TARGET ?? "app";
 const IS_LANDING = DEPLOY_TARGET === "landing";
 const APP_BASE_URL = (import.meta.env.VITE_APP_BASE_URL || PUBLIC_SITE_URL).replace(/\/+$/, "");
 const YEAR = new Date().getFullYear();
-const statuses = ["Viewed", "Contacted", "Hired"];
+const SESSION_STORAGE_KEY = "inclusive-hire-session";
+const VISITOR_STORAGE_KEY = "inclusive-hire-visitor";
 const publicSeo = {
   title: "Найм людей с инвалидностью в Бишкеке | inclusive-hire",
   description: "inclusive-hire Бишкек — некоммерческая платформа инклюзивного найма в Кыргызстане: работодатели могут нанять человека с инвалидностью, соискатели загружают резюме и показывают навыки.",
@@ -19,6 +20,7 @@ const statusLabels = {
   Contacted: "Связались",
   Hired: "Нанят"
 };
+const statuses = Object.keys(statusLabels);
 
 const roleLabels = {
   candidate: "Соискатель",
@@ -166,21 +168,30 @@ const seoForAppState = ({ user, page, selectedProfile, selectedCompany }) => {
 
 const readStoredSession = () => {
   try {
-    const stored = window.localStorage.getItem("inclusive-hire-session");
+    const stored = window.localStorage.getItem(SESSION_STORAGE_KEY);
     return stored ? JSON.parse(stored) : null;
   } catch {
-    window.localStorage.removeItem("inclusive-hire-session");
+    window.localStorage.removeItem(SESSION_STORAGE_KEY);
     return null;
   }
 };
 
 const readVisitorId = () => {
-  const existing = window.localStorage.getItem("inclusive-hire-visitor");
+  const existing = window.localStorage.getItem(VISITOR_STORAGE_KEY);
   if (existing) return existing;
 
   const id = window.crypto?.randomUUID?.() ?? `visitor-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  window.localStorage.setItem("inclusive-hire-visitor", id);
+  window.localStorage.setItem(VISITOR_STORAGE_KEY, id);
   return id;
+};
+
+const readEntityRoute = (entity) => {
+  const pathMatch = window.location.pathname.match(new RegExp(`^/${entity}/([^/]+)$`));
+  if (pathMatch) return decodeURIComponent(pathMatch[1]);
+
+  const route = window.location.hash.slice(1).split("?")[0];
+  const hashMatch = route.match(new RegExp(`^${entity}/([^/]+)$`));
+  return hashMatch ? decodeURIComponent(hashMatch[1]) : "";
 };
 
 const readAuthLink = () => {
@@ -197,21 +208,11 @@ const readAuthLink = () => {
 };
 
 const readCandidateRoute = () => {
-  const pathMatch = window.location.pathname.match(/^\/candidates\/([^/]+)$/);
-  if (pathMatch) return decodeURIComponent(pathMatch[1]);
-
-  const route = window.location.hash.slice(1).split("?")[0];
-  const match = route.match(/^candidates\/([^/]+)$/);
-  return match ? decodeURIComponent(match[1]) : "";
+  return readEntityRoute("candidates");
 };
 
 const readCompanyRoute = () => {
-  const pathMatch = window.location.pathname.match(/^\/companies\/([^/]+)$/);
-  if (pathMatch) return decodeURIComponent(pathMatch[1]);
-
-  const route = window.location.hash.slice(1).split("?")[0];
-  const match = route.match(/^companies\/([^/]+)$/);
-  return match ? decodeURIComponent(match[1]) : "";
+  return readEntityRoute("companies");
 };
 
 function App() {
@@ -310,8 +311,8 @@ function App() {
   }, [user?.id, page, selectedProfile?.id, selectedCompany?.id]);
 
   useEffect(() => {
-    if (session) window.localStorage.setItem("inclusive-hire-session", JSON.stringify(session));
-    else window.localStorage.removeItem("inclusive-hire-session");
+    if (session) window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+    else window.localStorage.removeItem(SESSION_STORAGE_KEY);
   }, [session]);
 
   useEffect(() => {
@@ -483,17 +484,25 @@ function App() {
     setAuthOpen(true);
   };
 
-  const handleAuthExpired = (error) => {
-    if (error.status !== 401 && error.status !== 403) return false;
-
-    setSession(null);
+  const clearPrivateState = () => {
     setCandidateProfile(null);
     setProfileViews([]);
     setProfileViewsLoaded(false);
     setProfileViewsLoading(false);
     setEmployees([]);
+    setCompanies([]);
     setSelectedProfile(null);
     setSelectedCompany(null);
+    setAdminUsers([]);
+    setAdminActivity(null);
+    setAdminResetState({});
+  };
+
+  const handleAuthExpired = (error) => {
+    if (error.status !== 401 && error.status !== 403) return false;
+
+    setSession(null);
+    clearPrivateState();
     setFormNotice("Сессия истекла. Войдите снова.");
     showAuth("login", user?.role === "hiring_manager" ? "hiring_manager" : "candidate");
     return true;
@@ -586,12 +595,7 @@ function App() {
 
   const signOut = () => {
     setSession(null);
-    setCandidateProfile(null);
-    setProfileViews([]);
-    setProfileViewsLoaded(false);
-    setProfileViewsLoading(false);
-    setEmployees([]);
-    setSelectedProfile(null);
+    clearPrivateState();
     setPage("home");
   };
 
@@ -635,6 +639,12 @@ function App() {
     event.preventDefault();
     setFormNotice("");
     const file = event.currentTarget.elements.cv.files[0];
+
+    if (!file) {
+      setFormNotice("Выберите файл резюме.");
+      return;
+    }
+
     const formData = new FormData();
     formData.append("cv", file);
 
@@ -1614,27 +1624,6 @@ function CandidateProfilePage({ profile, onBack, downloadCandidateCv, updateStat
             </div>
           </aside>
         )}
-      </div>
-    </section>
-  );
-}
-
-function ProfileDrawer({ profile, onClose, updateStatus }) {
-  return (
-    <section className="profile-drawer" aria-label="Профиль кандидата">
-      <div className="drawer-shell">
-        <div className="card-heading-row">
-          <h2>{profile.user?.name}</h2>
-          <button className="button quiet" type="button" onClick={onClose}>Закрыть</button>
-        </div>
-        <ProfileSummary profile={profile} detailed />
-        <div className="status-actions">
-          {statuses.map((status) => (
-            <button key={status} className="button secondary" type="button" onClick={() => updateStatus(profile.id, status)}>
-              {statusLabels[status]}
-            </button>
-          ))}
-        </div>
       </div>
     </section>
   );

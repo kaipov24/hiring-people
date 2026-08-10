@@ -2,12 +2,25 @@ import { isConfiguredAdmin } from "../config/admin.js";
 import { User } from "../models/user.model.js";
 import { verifyAccessToken } from "../utils/jwt.js";
 
+const bearerToken = (req) => {
+  const authorization = req.get("authorization") ?? "";
+  const [scheme, token] = authorization.split(" ");
+  return scheme === "Bearer" ? token : "";
+};
+
+const applyAdminRole = (user) => {
+  if (isConfiguredAdmin(user.email)) {
+    user.role = "admin";
+  }
+
+  return user;
+};
+
 export const authenticate = async (req, _res, next) => {
   try {
-    const authorization = req.get("authorization") ?? "";
-    const [scheme, token] = authorization.split(" ");
+    const token = bearerToken(req);
 
-    if (scheme !== "Bearer" || !token) {
+    if (!token) {
       const error = new Error("Необходимо войти в аккаунт");
       error.status = 401;
       throw error;
@@ -22,11 +35,7 @@ export const authenticate = async (req, _res, next) => {
       throw error;
     }
 
-    if (isConfiguredAdmin(user.email)) {
-      user.role = "admin";
-    }
-
-    req.user = user;
+    req.user = applyAdminRole(user);
     next();
   } catch (error) {
     error.status = error.status ?? 401;
@@ -36,10 +45,9 @@ export const authenticate = async (req, _res, next) => {
 
 export const optionalAuthenticate = async (req, _res, next) => {
   try {
-    const authorization = req.get("authorization") ?? "";
-    const [scheme, token] = authorization.split(" ");
+    const token = bearerToken(req);
 
-    if (scheme !== "Bearer" || !token) {
+    if (!token) {
       next();
       return;
     }
@@ -47,12 +55,7 @@ export const optionalAuthenticate = async (req, _res, next) => {
     const payload = verifyAccessToken(token);
     const user = await User.findById(payload.sub).select("_id email role name");
 
-    if (user) {
-      if (isConfiguredAdmin(user.email)) {
-        user.role = "admin";
-      }
-      req.user = user;
-    }
+    if (user) req.user = applyAdminRole(user);
 
     next();
   } catch {

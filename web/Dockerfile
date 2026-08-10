@@ -1,6 +1,6 @@
-FROM inclusive-hire-web-base:latest AS dependencies
+FROM node:20-alpine AS dependencies
 
-USER root
+WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 

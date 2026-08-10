@@ -1,10 +1,10 @@
 import bcrypt from "bcryptjs";
-import crypto from "node:crypto";
 
 import { isConfiguredAdmin } from "../config/admin.js";
 import { sendPasswordResetEmail, sendVerificationEmail } from "../config/email.js";
 import { User } from "../models/user.model.js";
 import { signAccessToken } from "../utils/jwt.js";
+import { createEmailVerificationToken, createPasswordResetToken } from "../utils/tokens.js";
 
 const publicUser = (user) => ({
   id: user.id,
@@ -12,16 +12,6 @@ const publicUser = (user) => ({
   name: user.name,
   role: isConfiguredAdmin(user.email) ? "admin" : user.role,
   emailVerified: user.emailVerified !== false
-});
-
-const createEmailVerification = () => ({
-  emailVerificationToken: crypto.randomBytes(24).toString("hex"),
-  emailVerificationExpiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24)
-});
-
-const createPasswordReset = () => ({
-  passwordResetToken: crypto.randomBytes(24).toString("hex"),
-  passwordResetExpiresAt: new Date(Date.now() + 1000 * 60 * 30)
 });
 
 export const register = async (req, res) => {
@@ -35,7 +25,7 @@ export const register = async (req, res) => {
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
-  const verification = createEmailVerification();
+  const verification = createEmailVerificationToken();
   const user = await User.create({
     email,
     passwordHash,
@@ -122,7 +112,7 @@ export const resendVerification = async (req, res) => {
     return;
   }
 
-  const verification = createEmailVerification();
+  const verification = createEmailVerificationToken();
   user.emailVerificationToken = verification.emailVerificationToken;
   user.emailVerificationExpiresAt = verification.emailVerificationExpiresAt;
   await user.save();
@@ -143,7 +133,7 @@ export const forgotPassword = async (req, res) => {
     return;
   }
 
-  const reset = createPasswordReset();
+  const reset = createPasswordResetToken();
   user.passwordResetToken = reset.passwordResetToken;
   user.passwordResetExpiresAt = reset.passwordResetExpiresAt;
   await user.save();

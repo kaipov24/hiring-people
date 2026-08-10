@@ -829,7 +829,6 @@ main {
 
 .edit-card,
 .profile-card,
-.profile-drawer .drawer-shell,
 .company-card {
   background: #ffffff;
   border: 1px solid #e4e1da;
@@ -1120,21 +1119,6 @@ main {
 
 .row-status.error {
   color: #9b2c20;
-}
-
-.profile-drawer {
-  background: rgb(29 36 48 / 62%);
-  inset: 0;
-  padding: 1rem;
-  position: fixed;
-  z-index: 40;
-}
-
-.profile-drawer .drawer-shell {
-  margin-left: auto;
-  max-height: calc(100vh - 2rem);
-  max-width: 42rem;
-  overflow: auto;
 }
 
 .status-actions {

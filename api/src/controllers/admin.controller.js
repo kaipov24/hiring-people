@@ -1,10 +1,9 @@
-import crypto from "node:crypto";
-
 import { sendPasswordResetEmail, sendTestEmail, verifyEmailTransport } from "../config/email.js";
 import { ActivityEvent } from "../models/activity-event.model.js";
 import { CandidateProfile } from "../models/candidate-profile.model.js";
 import { Company } from "../models/company.model.js";
 import { User } from "../models/user.model.js";
+import { createPasswordResetToken } from "../utils/tokens.js";
 
 const testUserEmailPatterns = [
   /^seed\./,
@@ -48,8 +47,9 @@ export const sendUserPasswordReset = async (req, res) => {
     throw error;
   }
 
-  user.passwordResetToken = crypto.randomBytes(24).toString("hex");
-  user.passwordResetExpiresAt = new Date(Date.now() + 1000 * 60 * 30);
+  const reset = createPasswordResetToken();
+  user.passwordResetToken = reset.passwordResetToken;
+  user.passwordResetExpiresAt = reset.passwordResetExpiresAt;
   await user.save();
   await sendPasswordResetEmail({ to: user.email, name: user.name, token: user.passwordResetToken });
 
