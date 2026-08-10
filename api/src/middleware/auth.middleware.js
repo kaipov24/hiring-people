@@ -1,3 +1,4 @@
+import { isConfiguredAdmin } from "../config/admin.js";
 import { User } from "../models/user.model.js";
 import { verifyAccessToken } from "../utils/jwt.js";
 
@@ -21,11 +22,41 @@ export const authenticate = async (req, _res, next) => {
       throw error;
     }
 
+    if (isConfiguredAdmin(user.email)) {
+      user.role = "admin";
+    }
+
     req.user = user;
     next();
   } catch (error) {
     error.status = error.status ?? 401;
     next(error);
+  }
+};
+
+export const optionalAuthenticate = async (req, _res, next) => {
+  try {
+    const authorization = req.get("authorization") ?? "";
+    const [scheme, token] = authorization.split(" ");
+
+    if (scheme !== "Bearer" || !token) {
+      next();
+      return;
+    }
+
+    const payload = verifyAccessToken(token);
+    const user = await User.findById(payload.sub).select("_id email role name");
+
+    if (user) {
+      if (isConfiguredAdmin(user.email)) {
+        user.role = "admin";
+      }
+      req.user = user;
+    }
+
+    next();
+  } catch {
+    next();
   }
 };
 

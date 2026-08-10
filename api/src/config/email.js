@@ -16,6 +16,13 @@ const buildTransport = () => {
     host: process.env.SMTP_HOST,
     port: Number.parseInt(process.env.SMTP_PORT ?? "587", 10),
     secure: process.env.SMTP_SECURE === "true",
+    requireTLS: process.env.SMTP_REQUIRE_TLS === "true",
+    connectionTimeout: Number.parseInt(process.env.SMTP_CONNECTION_TIMEOUT_MS ?? "10000", 10),
+    greetingTimeout: Number.parseInt(process.env.SMTP_CONNECTION_TIMEOUT_MS ?? "10000", 10),
+    socketTimeout: Number.parseInt(process.env.SMTP_SOCKET_TIMEOUT_MS ?? "30000", 10),
+    tls: {
+      rejectUnauthorized: process.env.SMTP_TLS_REJECT_UNAUTHORIZED !== "false"
+    },
     auth
   });
 };
@@ -40,6 +47,26 @@ export const sendEmail = async ({ to, subject, text, html }) => {
     subject,
     text,
     html
+  });
+};
+
+export const verifyEmailTransport = async () => {
+  transport ??= buildTransport();
+
+  if (!transport) {
+    return { configured: false, ready: false };
+  }
+
+  await transport.verify();
+  return { configured: true, ready: true };
+};
+
+export const sendTestEmail = async ({ to }) => {
+  await sendEmail({
+    to,
+    subject: "Тест email inclusive-hire",
+    text: "Это тестовое письмо inclusive-hire. SMTP настроен корректно.",
+    html: "<p>Это тестовое письмо inclusive-hire. SMTP настроен корректно.</p>"
   });
 };
 

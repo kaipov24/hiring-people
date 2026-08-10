@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
 
+import { isConfiguredAdmin } from "../config/admin.js";
 import { sendPasswordResetEmail, sendVerificationEmail } from "../config/email.js";
 import { User } from "../models/user.model.js";
 import { signAccessToken } from "../utils/jwt.js";
@@ -9,7 +10,7 @@ const publicUser = (user) => ({
   id: user.id,
   email: user.email,
   name: user.name,
-  role: user.role,
+  role: isConfiguredAdmin(user.email) ? "admin" : user.role,
   emailVerified: user.emailVerified !== false
 });
 

@@ -5,11 +5,13 @@ export const notFoundHandler = (req, _res, next) => {
 };
 
 export const errorHandler = (error, _req, res, _next) => {
-  const status = error.status ?? 500;
+  const isExpiredJwt = error.name === "TokenExpiredError";
+  const status = error.status ?? (isExpiredJwt ? 401 : 500);
+  const message = isExpiredJwt ? "Сессия истекла. Войдите снова." : error.message;
 
   res.status(status).json({
     error: {
-      message: status === 500 ? "Внутренняя ошибка сервера" : error.message,
+      message: status === 500 ? "Внутренняя ошибка сервера" : message,
       status,
       details: error.details
     }

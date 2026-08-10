@@ -10,6 +10,12 @@ const statusLabels = {
   Hired: "Нанят"
 };
 
+const roleLabels = {
+  candidate: "Соискатель",
+  hiring_manager: "Работодатель",
+  admin: "Админ"
+};
+
 const emptyAuthForm = { name: "", email: "", password: "", role: "candidate" };
 const emptyResetForm = { email: "", token: "", password: "" };
 const emptyAccountForm = { name: "" };
@@ -72,7 +78,11 @@ const contactInfo = (profile) => ({
 const request = async (path, options = {}) => {
   const response = await fetch(`${API_BASE_URL}${path}`, options);
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error?.message ?? "Запрос не выполнен");
+  if (!response.ok) {
+    const error = new Error(data.error?.message ?? "Запрос не выполнен");
+    error.status = response.status;
+    throw error;
+  }
   return data;
 };
 
@@ -84,6 +94,15 @@ const readStoredSession = () => {
     window.localStorage.removeItem("inclusive-hire-session");
     return null;
   }
+};
+
+const readVisitorId = () => {
+  const existing = window.localStorage.getItem("inclusive-hire-visitor");
+  if (existing) return existing;
+
+  const id = window.crypto?.randomUUID?.() ?? `visitor-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  window.localStorage.setItem("inclusive-hire-visitor", id);
+  return id;
 };
 
 const readAuthLink = () => {
@@ -130,6 +149,8 @@ function App() {
   const [profileForm, setProfileForm] = useState(emptyProfileForm);
   const [candidateProfile, setCandidateProfile] = useState(null);
   const [profileViews, setProfileViews] = useState([]);
+  const [profileViewsLoaded, setProfileViewsLoaded] = useState(false);
+  const [profileViewsLoading, setProfileViewsLoading] = useState(false);
   const [companyForm, setCompanyForm] = useState(emptyCompanyForm);
   const [companyProfile, setCompanyProfile] = useState(null);
   const [companyEditing, setCompanyEditing] = useState(true);
@@ -138,11 +159,15 @@ function App() {
   const [selectedProfile, setSelectedProfile] = useState(null);
   const [companies, setCompanies] = useState([]);
   const [selectedCompany, setSelectedCompany] = useState(null);
+  const [adminUsers, setAdminUsers] = useState([]);
+  const [adminActivity, setAdminActivity] = useState(null);
+  const [adminNotice, setAdminNotice] = useState("");
 
   const user = session?.user;
   const token = session?.token;
   const isCandidate = user?.role === "candidate";
   const isManager = user?.role === "hiring_manager";
+  const isAdmin = user?.role === "admin";
   const profileLists = useMemo(
     () => ({
       skills: toList(profileForm.skills),
@@ -189,8 +214,8 @@ function App() {
     }
 
     setAccountForm({ name: user.name ?? "" });
-    setPageState(readCompanyRoute() ? "companies" : isManager && readCandidateRoute() ? "candidate" : isManager ? "directory" : "profile");
-  }, [user?.id, user?.role]);
+    setPageState(readCompanyRoute() ? "companies" : isManager && readCandidateRoute() ? "candidate" : isAdmin ? "adminActivity" : isManager ? "directory" : "profile");
+  }, [user?.id, user?.role, isAdmin, isManager]);
 
   useEffect(() => {
     if ((!isManager && !isCandidate) || !token) return;
@@ -264,11 +289,17 @@ function App() {
           messenger: profile.contacts?.messenger ?? ""
         });
       })
-      .catch(() => {
+      .catch((error) => {
+        if (handleAuthExpired(error)) return;
         setCandidateProfile(null);
         setProfileForm(emptyProfileForm);
       });
   }, [isCandidate, token]);
+
+  useEffect(() => {
+    if (!isCandidate || !token || page !== "profile") return;
+    loadProfileViews();
+  }, [isCandidate, token, page]);
 
   useEffect(() => {
     if (!user || !token) return;
@@ -302,6 +333,37 @@ function App() {
     };
   }, [user?.id, token]);
 
+  useEffect(() => {
+    if (user || page !== "home") return;
+    recordPageView("home");
+  }, [page, user?.id]);
+
+  useEffect(() => {
+    if (!user) return;
+    recordPageView("home");
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!isAdmin || !token) return;
+    if (page === "adminUsers") loadAdminUsers();
+    if (page === "adminActivity") loadAdminActivity();
+  }, [isAdmin, token, page]);
+
+  const recordPageView = async (viewPage) => {
+    try {
+      await fetch(`${API_BASE_URL}/api/activity/page-view`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? authHeaders(token) : {})
+        },
+        body: JSON.stringify({ page: viewPage, visitorId: readVisitorId() })
+      });
+    } catch {
+      // Analytics should never block the user flow.
+    }
+  };
+
   const showAuth = (mode, role = "candidate") => {
     setAuthMode(mode);
     setAuthForm({ ...emptyAuthForm, role });
@@ -310,6 +372,22 @@ function App() {
     setVerificationToken("");
     setResetForm({ ...emptyResetForm, email: authForm.email });
     setAuthOpen(true);
+  };
+
+  const handleAuthExpired = (error) => {
+    if (error.status !== 401 && error.status !== 403) return false;
+
+    setSession(null);
+    setCandidateProfile(null);
+    setProfileViews([]);
+    setProfileViewsLoaded(false);
+    setProfileViewsLoading(false);
+    setEmployees([]);
+    setSelectedProfile(null);
+    setSelectedCompany(null);
+    setFormNotice("Сессия истекла. Войдите снова.");
+    showAuth("login", user?.role === "hiring_manager" ? "hiring_manager" : "candidate");
+    return true;
   };
 
   const submitAuth = async (event) => {
@@ -401,6 +479,8 @@ function App() {
     setSession(null);
     setCandidateProfile(null);
     setProfileViews([]);
+    setProfileViewsLoaded(false);
+    setProfileViewsLoading(false);
     setEmployees([]);
     setSelectedProfile(null);
     setPage("home");
@@ -437,6 +517,7 @@ function App() {
       setCandidateProfile(profileData.candidate);
       setFormNotice("Профиль сохранен.");
     } catch (error) {
+      if (handleAuthExpired(error)) return;
       setFormNotice(error.message);
     }
   };
@@ -455,10 +536,15 @@ function App() {
         body: formData
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error?.message ?? "Резюме не загружено");
+      if (!response.ok) {
+        const error = new Error(data.error?.message ?? "Резюме не загружено");
+        error.status = response.status;
+        throw error;
+      }
       setCandidateProfile(data.candidate);
       setFormNotice("Резюме загружено.");
     } catch (error) {
+      if (handleAuthExpired(error)) return;
       setFormNotice(error.message);
     }
   };
@@ -469,7 +555,14 @@ function App() {
     const response = await fetch(`${API_BASE_URL}/api/candidates/${profile.id}/cv`, {
       headers: authHeaders(token)
     });
-    if (!response.ok) return;
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        handleAuthExpired({ status: response.status });
+        return;
+      }
+      setFormNotice("Не удалось скачать резюме.");
+      return;
+    }
 
     const blob = await response.blob();
     const url = window.URL.createObjectURL(blob);
@@ -484,11 +577,17 @@ function App() {
 
   const loadProfileViews = async () => {
     setFormNotice("");
+    setProfileViewsLoading(true);
     try {
       const data = await request("/api/candidates/me/views", { headers: authHeaders(token) });
       setProfileViews(data.views ?? []);
+      setProfileViewsLoaded(true);
     } catch (error) {
+      if (handleAuthExpired(error)) return;
       setFormNotice(error.message);
+      setProfileViewsLoaded(true);
+    } finally {
+      setProfileViewsLoading(false);
     }
   };
 
@@ -516,6 +615,7 @@ function App() {
       setCompanyEditing(false);
       loadEmployees(undefined, filters);
     } catch (error) {
+      if (handleAuthExpired(error)) return;
       setFormNotice(error.message);
     }
   };
@@ -534,6 +634,7 @@ function App() {
       setEmployees(data.candidates ?? []);
       if (page !== "candidate") setSelectedProfile(null);
     } catch (error) {
+      if (handleAuthExpired(error)) return;
       setFormNotice(error.message);
     }
   };
@@ -582,6 +683,39 @@ function App() {
     }
   };
 
+  const loadAdminUsers = async () => {
+    setAdminNotice("");
+    try {
+      const data = await request("/api/admin/users", { headers: authHeaders(token) });
+      setAdminUsers(data.users ?? []);
+    } catch (error) {
+      setAdminNotice(error.message);
+    }
+  };
+
+  const loadAdminActivity = async () => {
+    setAdminNotice("");
+    try {
+      const data = await request("/api/admin/activity", { headers: authHeaders(token) });
+      setAdminActivity(data.summary);
+    } catch (error) {
+      setAdminNotice(error.message);
+    }
+  };
+
+  const sendAdminPasswordReset = async (userId) => {
+    setAdminNotice("");
+    try {
+      const data = await request(`/api/admin/users/${userId}/password-reset`, {
+        method: "POST",
+        headers: authHeaders(token)
+      });
+      setAdminNotice(data.message ?? "Ссылка отправлена.");
+    } catch (error) {
+      setAdminNotice(error.message);
+    }
+  };
+
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">К содержанию</a>
@@ -590,14 +724,26 @@ function App() {
         page={page}
         isCandidate={isCandidate}
         isManager={isManager}
+        isAdmin={isAdmin}
         setPage={setPage}
         showAuth={showAuth}
         signOut={signOut}
       />
 
       <main id="main-content">
-        {page !== "candidate" && <Hero user={user} isCandidate={isCandidate} isManager={isManager} page={page} showAuth={showAuth} setPage={setPage} />}
+        {page !== "candidate" && <Hero user={user} isCandidate={isCandidate} isManager={isManager} isAdmin={isAdmin} page={page} showAuth={showAuth} setPage={setPage} />}
         {!user && <PublicHome />}
+        {isAdmin && (page === "adminUsers" || page === "adminActivity") && (
+          <AdminPage
+            page={page}
+            users={adminUsers}
+            activity={adminActivity}
+            notice={adminNotice}
+            loadUsers={loadAdminUsers}
+            loadActivity={loadAdminActivity}
+            sendPasswordReset={sendAdminPasswordReset}
+          />
+        )}
         {isManager && (page === "directory" || page === "candidate") && (
           <DirectoryPage
             page={page}
@@ -637,6 +783,8 @@ function App() {
             saveProfile={saveProfile}
             uploadCv={uploadCv}
             profileViews={profileViews}
+            profileViewsLoaded={profileViewsLoaded}
+            profileViewsLoading={profileViewsLoading}
             loadProfileViews={loadProfileViews}
             downloadCandidateCv={downloadCandidateCv}
             notice={formNotice}
@@ -702,14 +850,16 @@ function App() {
   );
 }
 
-function Header({ user, page, isCandidate, isManager, setPage, showAuth, signOut }) {
-  const openStartPage = () => setPage(isManager ? "directory" : isCandidate ? "profile" : "home");
+function Header({ user, page, isCandidate, isManager, isAdmin, setPage, showAuth, signOut }) {
+  const openStartPage = () => setPage(isAdmin ? "adminActivity" : isManager ? "directory" : isCandidate ? "profile" : "home");
   return (
     <header className="site-header">
       <button className="brand-button" type="button" onClick={openStartPage}>inclusive-hire</button>
       <nav aria-label="Главная навигация">
         {isManager && <button type="button" className={page === "directory" ? "nav-active" : ""} onClick={() => setPage("directory")}>Кандидаты</button>}
         {isManager && <button type="button" className={page === "company" ? "nav-active" : ""} onClick={() => setPage("company")}>Моя компания</button>}
+        {isAdmin && <button type="button" className={page === "adminActivity" ? "nav-active" : ""} onClick={() => setPage("adminActivity")}>Активность</button>}
+        {isAdmin && <button type="button" className={page === "adminUsers" ? "nav-active" : ""} onClick={() => setPage("adminUsers")}>Пользователи</button>}
         {isCandidate && <button type="button" className={page === "profile" ? "nav-active" : ""} onClick={() => setPage("profile")}>Мой профиль</button>}
         {isCandidate && <button type="button" className={page === "candidates" || page === "candidate" ? "nav-active" : ""} onClick={() => setPage("candidates")}>Кандидаты</button>}
         {isCandidate && <button type="button" className={page === "companies" ? "nav-active" : ""} onClick={() => setPage("companies")}>Компании</button>}
@@ -731,10 +881,14 @@ function Header({ user, page, isCandidate, isManager, setPage, showAuth, signOut
   );
 }
 
-function Hero({ user, isCandidate, isManager, page, showAuth, setPage }) {
+function Hero({ user, isCandidate, isManager, isAdmin, page, showAuth, setPage }) {
   const publicHero = !user;
   const title = publicHero
     ? "Найм людей с инвалидностью в Бишкеке"
+    : isAdmin
+      ? page === "adminUsers"
+        ? "Пользователи"
+        : "Активность платформы"
     : isManager
       ? page === "company"
         ? "Профиль компании"
@@ -746,6 +900,10 @@ function Hero({ user, isCandidate, isManager, page, showAuth, setPage }) {
       : "Ваш профиль соискателя";
   const text = publicHero
     ? "Работодатели находят сильных специалистов, соискатели показывают опыт, навыки и удобный формат работы."
+    : isAdmin
+      ? page === "adminUsers"
+        ? "Просматривайте аккаунты и отправляйте ссылки для смены пароля."
+        : "Следите за пользователями, регистрациями и просмотрами главной страницы."
     : isManager
       ? page === "company"
         ? "Заполните описание, контакты и условия работы, чтобы соискатели понимали вашу команду."
@@ -769,6 +927,86 @@ function Hero({ user, isCandidate, isManager, page, showAuth, setPage }) {
           </div>
         )}
         {isCandidate && <button className="button primary" type="button" onClick={() => setPage("profile")}>Редактировать профиль</button>}
+      </div>
+    </section>
+  );
+}
+
+function AdminPage({ page, users, activity, notice, loadUsers, loadActivity, sendPasswordReset }) {
+  const metrics = activity
+    ? [
+        ["Всего пользователей", activity.totalUsers],
+        ["Новые за 7 дней", activity.newUsersLast7Days],
+        ["Профили соискателей", activity.candidates],
+        ["Работодатели", activity.employers],
+        ["Компании", activity.companies],
+        ["Главная до входа", activity.mainPageViewsBeforeLogin],
+        ["Главная после входа", activity.mainPageViewsAfterLogin]
+      ]
+    : [];
+
+  if (page === "adminUsers") {
+    return (
+      <section className="admin-page">
+        <div className="results-top">
+          <div>
+            <p className="eyebrow">Администрирование</p>
+            <h2>Пользователи</h2>
+          </div>
+          <button className="button quiet" type="button" onClick={loadUsers}>Обновить</button>
+        </div>
+        {notice && <p className="inline-notice" role="status">{notice}</p>}
+        <div className="admin-table-card">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Имя</th>
+                <th>Email</th>
+                <th>Роль</th>
+                <th>Статус</th>
+                <th>Дата</th>
+                <th>Действие</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.name}</td>
+                  <td>{item.email}</td>
+                  <td>{roleLabels[item.role] ?? item.role}</td>
+                  <td>{item.emailVerified ? "Подтвержден" : "Email не подтвержден"}</td>
+                  <td>{new Date(item.createdAt).toLocaleDateString("ru-RU")}</td>
+                  <td>
+                    <button className="button quiet compact" type="button" onClick={() => sendPasswordReset(item.id)}>
+                      Сбросить пароль
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="admin-page">
+      <div className="results-top">
+        <div>
+          <p className="eyebrow">Администрирование</p>
+          <h2>Активность</h2>
+        </div>
+        <button className="button quiet" type="button" onClick={loadActivity}>Обновить</button>
+      </div>
+      {notice && <p className="inline-notice" role="status">{notice}</p>}
+      <div className="admin-metrics-grid">
+        {metrics.map(([label, value]) => (
+          <article className="admin-metric-card" key={label}>
+            <span>{label}</span>
+            <strong>{value ?? 0}</strong>
+          </article>
+        ))}
       </div>
     </section>
   );
@@ -1020,7 +1258,7 @@ function CompanyContacts({ company, compact = false }) {
   );
 }
 
-function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfileForm, profileLists, candidateProfile, saveProfile, uploadCv, profileViews, loadProfileViews, downloadCandidateCv, notice }) {
+function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfileForm, profileLists, candidateProfile, saveProfile, uploadCv, profileViews, profileViewsLoaded, profileViewsLoading, loadProfileViews, downloadCandidateCv, notice }) {
   const preview = {
     user,
     ...candidateProfile,
@@ -1083,7 +1321,7 @@ function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfil
           <button className="button primary wide" type="submit">Сохранить профиль</button>
         </form>
         <aside className="profile-side">
-          <ProfileSummary profile={preview} detailed onDownloadCv={candidateProfile?.cv?.originalName ? () => downloadCandidateCv(candidateProfile) : undefined} />
+          <ProfileSummary profile={preview} detailed />
           <form className="edit-card resume-upload-card" onSubmit={uploadCv}>
             <h3>Резюме</h3>
             <Field id="cv" name="cv" label="Файл резюме" type="file" onChange={() => {}} accept=".pdf,.doc,.docx" required />
@@ -1091,15 +1329,23 @@ function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfil
             {candidateProfile?.cv?.originalName && (
               <button className="button primary full" type="button" onClick={() => downloadCandidateCv(candidateProfile)}>Скачать резюме</button>
             )}
-            <p className="hint">{candidateProfile?.cv?.originalName ?? "Резюме пока не загружено."}</p>
+            {candidateProfile?.cv?.originalName ? (
+              <p className="resume-file-name">Загружено: {candidateProfile.cv.originalName}</p>
+            ) : (
+              <p className="hint">Резюме пока не загружено.</p>
+            )}
           </form>
           <section className="edit-card">
             <div className="card-heading-row">
               <h3>Просмотры профиля</h3>
-              <button className="button quiet" type="button" onClick={loadProfileViews}>Обновить</button>
+              <button className="button quiet" type="button" onClick={loadProfileViews} disabled={profileViewsLoading}>
+                {profileViewsLoading ? "Загрузка" : "Обновить"}
+              </button>
             </div>
-            {profileViews.length === 0 ? (
-              <p className="empty-state">Просмотры пока не загружены.</p>
+            {profileViewsLoading ? (
+              <p className="empty-state">Загружаем просмотры.</p>
+            ) : profileViews.length === 0 ? (
+              <p className="empty-state">{profileViewsLoaded ? "Пока никто не просматривал профиль." : "Просмотры загрузятся автоматически."}</p>
             ) : (
               <ul className="views-list">
                 {profileViews.map((view) => {
@@ -1236,10 +1482,12 @@ function ProfileSummary({ profile, detailed = false, onDownloadCv }) {
           <p className="accessibility-note">{profile.accessibilityPreferences}</p>
         </>
       )}
-      <div className="resume-row">
-        <p className="hint">{profile?.cv?.originalName ?? "Резюме можно загрузить в профиле."}</p>
-        {onDownloadCv && <button className="button primary" type="button" onClick={onDownloadCv}>Скачать резюме</button>}
-      </div>
+      {onDownloadCv && (
+        <div className="resume-row">
+          <p className="hint">{profile?.cv?.originalName ?? "Резюме можно загрузить в профиле."}</p>
+          <button className="button primary" type="button" onClick={onDownloadCv}>Скачать резюме</button>
+        </div>
+      )}
     </section>
   );
 }

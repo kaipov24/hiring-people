@@ -256,6 +256,11 @@ textarea {
   width: 100%;
 }
 
+.button.compact {
+  min-height: 2.35rem;
+  padding: 0.45rem 0.75rem;
+}
+
 main {
   display: grid;
   flex: 1;
@@ -357,6 +362,7 @@ main {
 .jobs-page,
 .profile-page,
 .company-profile-page,
+.admin-page,
 .companies-section {
   display: grid;
   gap: 1.5rem;
@@ -642,6 +648,7 @@ main {
 }
 
 .company-overview-card {
+  display: grid;
   gap: 0.8rem;
 }
 
@@ -789,6 +796,13 @@ main {
   margin: 0;
 }
 
+.resume-file-name {
+  color: #5a6370;
+  font-weight: 750;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 .resume-upload-card input[type="file"] {
   margin-bottom: 0;
   padding: 0.65rem 0.8rem;
@@ -920,6 +934,65 @@ main {
 
 .views-list span {
   color: #5a6370;
+}
+
+.admin-metrics-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.admin-metric-card,
+.admin-table-card {
+  background: #ffffff;
+  border: 1px solid #e4e1da;
+  border-radius: 16px;
+  box-shadow: 0 10px 28px rgb(28 36 48 / 5%);
+}
+
+.admin-metric-card {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1rem;
+}
+
+.admin-metric-card span {
+  color: #5a6370;
+  font-weight: 850;
+}
+
+.admin-metric-card strong {
+  color: #1c2430;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.admin-table-card {
+  overflow: auto;
+}
+
+.admin-table {
+  border-collapse: collapse;
+  min-width: 58rem;
+  width: 100%;
+}
+
+.admin-table th,
+.admin-table td {
+  border-bottom: 1px solid #ece8df;
+  padding: 0.8rem 0.9rem;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.admin-table th {
+  color: #46505d;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+}
+
+.admin-table tr:last-child td {
+  border-bottom: 0;
 }
 
 .profile-drawer {
@@ -1139,7 +1212,8 @@ main {
   .jobs-layout.seeker-layout,
   .profile-grid,
   .company-form-grid,
-  .company-overview-grid {
+  .company-overview-grid,
+  .admin-metrics-grid {
     grid-template-columns: 1fr;
   }
 

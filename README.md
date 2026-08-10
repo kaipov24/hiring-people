@@ -28,6 +28,12 @@ Open:
 
 Local email goes to Mailpit by default. For real SMTP, copy `.env.example` to `.env`, set `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`, then restart the API.
 
+## Admin
+
+Create a normal account first, then add its email to `ADMIN_EMAILS` in `.env` and restart the API. Use that same account password to log in as admin.
+
+Admins can check SMTP readiness through `/api/admin/email/status` and send a test message through `/api/admin/email/test`.
+
 ## Notes
 
 This is a non-profit project. It is designed to support fairer and more accessible hiring.
