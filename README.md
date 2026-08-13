@@ -112,6 +112,51 @@ echo YOUR_GITHUB_TOKEN | docker login ghcr.io -u kaipov24 --password-stdin
 
 Automatic laptop deploy uses a GitHub self-hosted runner. Setup guide: `docs/laptop-runner.md`.
 
+Quick runner setup on the laptop:
+
+```bash
+cd ~
+mkdir -p actions-runner
+cd actions-runner
+```
+
+In GitHub, open:
+
+```text
+Repository -> Settings -> Actions -> Runners -> New self-hosted runner
+```
+
+Choose Linux x64 and run the download/config commands GitHub shows.
+
+Answer the config prompts like this:
+
+```text
+Runner group: press Enter for Default
+Runner name: inclusive-hire-laptop
+Additional labels: inclusive-hire-laptop
+Work folder: press Enter for _work
+```
+
+Install and start the runner service:
+
+```bash
+sudo ./svc.sh install
+sudo ./svc.sh start
+sudo ./svc.sh status
+```
+
+The deploy workflow expects the app repo at:
+
+```text
+/home/kayrat/hiring-people
+```
+
+To redeploy manually from GitHub:
+
+```text
+Actions -> Deploy laptop -> Run workflow
+```
+
 ## Notes
 
 This is a non-profit project. It is designed to support fairer and more accessible hiring.
