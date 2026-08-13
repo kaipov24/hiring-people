@@ -1,0 +1,43 @@
+name: Deploy laptop
+
+on:
+  workflow_run:
+    workflows:
+      - Deploy images
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: laptop-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on:
+      - self-hosted
+      - linux
+      - inclusive-hire-laptop
+
+    steps:
+      - name: Check Docker
+        run: |
+          docker version
+          docker compose version
+
+      - name: Deploy latest images
+        working-directory: /home/kayrat/hiring-people
+        run: |
+          git fetch origin main
+          git reset --hard origin/main
+          ./scripts/check-homelab-env.sh
+          docker compose pull api web
+          docker compose up -d --remove-orphans
+          docker compose ps
+
+      - name: Verify app health
+        run: |
+          curl --fail --show-error --silent http://localhost:8080/health

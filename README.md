@@ -110,6 +110,8 @@ If the GHCR packages are private, log in first with a GitHub token that has `rea
 echo YOUR_GITHUB_TOKEN | docker login ghcr.io -u kaipov24 --password-stdin
 ```
 
+Automatic laptop deploy uses a GitHub self-hosted runner. Setup guide: `docs/laptop-runner.md`.
+
 ## Notes
 
 This is a non-profit project. It is designed to support fairer and more accessible hiring.
