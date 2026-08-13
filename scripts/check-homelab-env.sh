@@ -2,6 +2,19 @@
 set -eu
 
 missing=""
+require_tunnel=false
+
+for arg in "$@"; do
+  case "$arg" in
+    --require-tunnel)
+      require_tunnel=true
+      ;;
+    *)
+      printf 'Unknown option: %s\n' "$arg"
+      exit 2
+      ;;
+  esac
+done
 
 require_env() {
   name="$1"
@@ -29,16 +42,22 @@ fi
 
 require_env PUBLIC_SITE_URL
 require_env PUBLIC_APP_URL
-require_env CLOUDFLARE_TUNNEL_TOKEN
 require_env JWT_EXPIRES_IN
 require_env ADMIN_EMAILS
 require_env SMTP_HOST
 require_env SMTP_PORT
-require_env SMTP_USER
-require_env SMTP_PASS
 require_env MAIL_FROM
 require_file secrets/mongodb_password
 require_file secrets/jwt_secret
+
+if [ "$SMTP_HOST" != "mailpit" ]; then
+  require_env SMTP_USER
+  require_env SMTP_PASS
+fi
+
+if [ "$require_tunnel" = "true" ]; then
+  require_env CLOUDFLARE_TUNNEL_TOKEN
+fi
 
 if [ -n "$missing" ]; then
   printf 'Home-lab configuration is incomplete. Missing:%s\n' "$missing"

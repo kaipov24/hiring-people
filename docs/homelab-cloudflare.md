@@ -53,7 +53,7 @@ openssl rand -base64 64 > secrets/jwt_secret
 Check the configuration:
 
 ```bash
-./scripts/check-homelab-env.sh
+./scripts/check-homelab-env.sh --require-tunnel
 ```
 
 ## 3. Start The App
