@@ -7,8 +7,12 @@ on:
     paths:
       - "api/**"
       - "web/**"
-      - "compose.yaml"
+      - "compose*.yaml"
+      - ".env.example"
+      - ".env.homelab.example"
+      - "scripts/**"
       - ".github/workflows/deploy-image.yml"
+      - ".github/workflows/deploy-laptop.yml"
   workflow_dispatch:
 
 env:
