@@ -111,6 +111,7 @@ echo YOUR_GITHUB_TOKEN | docker login ghcr.io -u kaipov24 --password-stdin
 ```
 
 Automatic laptop deploy uses a GitHub self-hosted runner. Setup guide: `docs/laptop-runner.md`.
+Laptop backup and restore commands: `docs/laptop-operations.md`.
 
 Quick runner setup on the laptop:
 
