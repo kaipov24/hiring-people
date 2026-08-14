@@ -66,7 +66,8 @@ jobs:
 
           printf '%s' '${{ secrets.MONGODB_PASSWORD }}' > "$DEPLOY_DIR/secrets/mongodb_password"
           printf '%s' '${{ secrets.JWT_SECRET }}' > "$DEPLOY_DIR/secrets/jwt_secret"
-          chmod 600 "$DEPLOY_DIR/.env" "$DEPLOY_DIR/secrets/mongodb_password" "$DEPLOY_DIR/secrets/jwt_secret"
+          chmod 600 "$DEPLOY_DIR/.env"
+          chmod 644 "$DEPLOY_DIR/secrets/mongodb_password" "$DEPLOY_DIR/secrets/jwt_secret"
 
       - name: Deploy latest images
         working-directory: /opt/inclusive-hire
