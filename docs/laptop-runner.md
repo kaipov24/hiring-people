@@ -28,51 +28,82 @@ docker version
 docker compose version
 ```
 
-## 2. Clone App
+## 2. Prepare Runtime Directory
 
-The deploy workflow expects this exact path:
+The deploy workflow writes runtime files to:
 
 ```text
-/home/kayrat/hiring-people
+/opt/inclusive-hire
 ```
 
-Clone there:
+Create it once and give your user ownership:
 
 ```bash
-mkdir -p /home/kayrat/hiring-people
-cd /home/kayrat/hiring-people
-git clone git@github.com:kaipov24/hiring-people.git .
+sudo mkdir -p /opt/inclusive-hire
+sudo chown -R $USER:$USER /opt/inclusive-hire
 ```
 
-Create runtime config:
+The deploy workflow creates these files automatically from GitHub vars/secrets:
 
-```bash
-cp .env.homelab.example .env
-openssl rand -base64 32 > secrets/mongodb_password
-openssl rand -base64 64 > secrets/jwt_secret
+```text
+/opt/inclusive-hire/.env
+/opt/inclusive-hire/secrets/mongodb_password
+/opt/inclusive-hire/secrets/jwt_secret
 ```
 
-Edit `.env` for local laptop testing:
+No full app source checkout is required on the laptop.
 
-```env
+## 3. Configure GitHub Variables And Secrets
+
+In GitHub:
+
+```text
+Repository -> Settings -> Secrets and variables -> Actions
+```
+
+Add variables:
+
+```text
 PUBLIC_SITE_URL=https://kaipov24.github.io/hiring-people
 PUBLIC_APP_URL=http://localhost:8080
 VITE_APP_BASE_URL=http://localhost:8080
-ADMIN_EMAILS=your-email@example.com
+JWT_EXPIRES_IN=8h
 SMTP_HOST=mailpit
 SMTP_PORT=1025
-SMTP_USER=
-SMTP_PASS=
+SMTP_SECURE=false
+SMTP_REQUIRE_TLS=false
+SMTP_TLS_REJECT_UNAUTHORIZED=true
+SMTP_CONNECTION_TIMEOUT_MS=10000
+SMTP_SOCKET_TIMEOUT_MS=30000
 MAIL_FROM=kaipov.kayrat@gmail.com
 ```
 
-Check:
+Add secrets:
 
-```bash
-./scripts/check-homelab-env.sh
+```text
+ADMIN_EMAILS=your-email@example.com
+MONGODB_PASSWORD=<strong random value>
+JWT_SECRET=<strong random value>
 ```
 
-## 3. Add GitHub Runner
+For local Mailpit testing, do not add `SMTP_USER`, `SMTP_PASS`, or `CLOUDFLARE_TUNNEL_TOKEN`.
+
+Add these later only when needed:
+
+```text
+SMTP_USER=<brevo smtp login>
+SMTP_PASS=<brevo smtp key>
+CLOUDFLARE_TUNNEL_TOKEN=<cloudflare tunnel token>
+```
+
+Generate strong values locally if needed:
+
+```bash
+openssl rand -base64 32
+openssl rand -base64 64
+```
+
+## 4. Add GitHub Runner
 
 In GitHub:
 
@@ -108,7 +139,7 @@ Keep the default labels too:
 self-hosted, linux, x64, inclusive-hire-laptop
 ```
 
-## 4. Run Runner As A Service
+## 5. Run Runner As A Service
 
 From the `actions-runner` directory:
 
@@ -118,19 +149,17 @@ sudo ./svc.sh start
 sudo ./svc.sh status
 ```
 
-## 5. Start Initial App
+## 6. Start Initial App
 
-Before relying on CI/CD, run once manually:
+After the first successful deploy, check the app:
 
 ```bash
-cd /home/kayrat/hiring-people
-docker compose pull
-docker compose up -d
+cd /opt/inclusive-hire
 docker compose ps
 curl -i http://localhost:8080/health
 ```
 
-## 6. Deploy From GitHub
+## 7. Deploy From GitHub
 
 After `deploy-laptop.yml` is pushed:
 

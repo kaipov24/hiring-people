@@ -145,10 +145,17 @@ sudo ./svc.sh start
 sudo ./svc.sh status
 ```
 
-The deploy workflow expects the app repo at:
+The deploy workflow writes runtime files to:
 
 ```text
-/home/kayrat/hiring-people
+/opt/inclusive-hire
+```
+
+Create it once on the laptop:
+
+```bash
+sudo mkdir -p /opt/inclusive-hire
+sudo chown -R $USER:$USER /opt/inclusive-hire
 ```
 
 To redeploy manually from GitHub:

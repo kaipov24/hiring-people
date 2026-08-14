@@ -10,6 +10,7 @@ on:
       - "compose*.yaml"
       - ".env.example"
       - ".env.homelab.example"
+      - "deploy/**"
       - "scripts/**"
       - ".github/workflows/deploy-image.yml"
       - ".github/workflows/deploy-laptop.yml"

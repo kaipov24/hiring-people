@@ -14,6 +14,9 @@ concurrency:
   group: laptop-deploy
   cancel-in-progress: true
 
+env:
+  DEPLOY_DIR: /opt/inclusive-hire
+
 jobs:
   deploy:
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
@@ -23,17 +26,52 @@ jobs:
       - inclusive-hire-laptop
 
     steps:
+      - name: Checkout deploy files
+        uses: actions/checkout@v4
+
       - name: Check Docker
         run: |
           docker version
           docker compose version
 
-      - name: Deploy latest images
-        working-directory: /home/kayrat/Desktop/hiring-people
+      - name: Sync deploy files
         run: |
-          git fetch origin main
-          git reset --hard origin/main
-          ./scripts/check-homelab-env.sh
+          mkdir -p "$DEPLOY_DIR"
+          mkdir -p "$DEPLOY_DIR/secrets"
+          cp -R deploy/. "$DEPLOY_DIR/"
+          chmod +x "$DEPLOY_DIR/scripts/check-env.sh"
+
+      - name: Write runtime environment
+        run: |
+          cat > "$DEPLOY_DIR/.env" <<'EOF'
+          PUBLIC_SITE_URL=${{ vars.PUBLIC_SITE_URL || 'https://kaipov24.github.io/hiring-people' }}
+          PUBLIC_APP_URL=${{ vars.PUBLIC_APP_URL || 'http://localhost:8080' }}
+          VITE_APP_BASE_URL=${{ vars.VITE_APP_BASE_URL || 'http://localhost:8080' }}
+          VITE_DEPLOY_TARGET=app
+          VITE_BASE_PATH=/
+          CLOUDFLARE_TUNNEL_TOKEN=${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
+          JWT_EXPIRES_IN=${{ vars.JWT_EXPIRES_IN || '8h' }}
+          ADMIN_EMAILS=${{ secrets.ADMIN_EMAILS }}
+          SMTP_HOST=${{ vars.SMTP_HOST || 'mailpit' }}
+          SMTP_PORT=${{ vars.SMTP_PORT || '1025' }}
+          SMTP_SECURE=${{ vars.SMTP_SECURE || 'false' }}
+          SMTP_REQUIRE_TLS=${{ vars.SMTP_REQUIRE_TLS || 'false' }}
+          SMTP_TLS_REJECT_UNAUTHORIZED=${{ vars.SMTP_TLS_REJECT_UNAUTHORIZED || 'true' }}
+          SMTP_CONNECTION_TIMEOUT_MS=${{ vars.SMTP_CONNECTION_TIMEOUT_MS || '10000' }}
+          SMTP_SOCKET_TIMEOUT_MS=${{ vars.SMTP_SOCKET_TIMEOUT_MS || '30000' }}
+          SMTP_USER=${{ secrets.SMTP_USER }}
+          SMTP_PASS=${{ secrets.SMTP_PASS }}
+          MAIL_FROM=${{ vars.MAIL_FROM || 'kaipov.kayrat@gmail.com' }}
+          EOF
+
+          printf '%s' '${{ secrets.MONGODB_PASSWORD }}' > "$DEPLOY_DIR/secrets/mongodb_password"
+          printf '%s' '${{ secrets.JWT_SECRET }}' > "$DEPLOY_DIR/secrets/jwt_secret"
+          chmod 600 "$DEPLOY_DIR/.env" "$DEPLOY_DIR/secrets/mongodb_password" "$DEPLOY_DIR/secrets/jwt_secret"
+
+      - name: Deploy latest images
+        working-directory: /opt/inclusive-hire
+        run: |
+          ./scripts/check-env.sh
           docker compose pull api web
           docker compose up -d --remove-orphans
           docker compose ps
