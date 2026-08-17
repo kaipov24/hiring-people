@@ -2,6 +2,12 @@
 
 Run these commands on the Linux laptop.
 
+## Resume Storage
+
+If `STORAGE_DRIVER=local`, uploaded resumes live in the Docker `api_uploads` volume and should be backed up.
+
+If `STORAGE_DRIVER=r2`, new uploaded resumes live in Cloudflare R2. The local uploads backup is only needed for old files uploaded before R2 was enabled.
+
 ## Back Up MongoDB
 
 ```bash

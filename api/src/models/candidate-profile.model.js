@@ -68,6 +68,13 @@ const candidateProfileSchema = new mongoose.Schema(
     },
     cv: {
       filename: String,
+      storageDriver: {
+        type: String,
+        enum: ["local", "r2"],
+        default: "local"
+      },
+      storageKey: String,
+      bucket: String,
       originalName: String,
       mimeType: String,
       size: Number,

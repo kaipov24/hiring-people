@@ -10,6 +10,7 @@ The site helps employers find candidates with limited abilities and helps job se
 - Candidate profile cards with filters by location, languages, and skills.
 - Separate full profile pages for each candidate.
 - Resume upload and download.
+- Cloudflare R2 storage support for uploaded resumes.
 - Editable job seeker and company profiles.
 - Local email testing through Mailpit.
 
@@ -35,6 +36,7 @@ Required production values:
 - `JWT_EXPIRES_IN`: login session lifetime.
 - SMTP settings: `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`.
 - `ADMIN_EMAILS`: comma-separated admin account emails.
+- Optional Cloudflare R2 resume storage: `STORAGE_DRIVER=r2`, `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`.
 - `secrets/mongodb_password` and `secrets/jwt_secret`: strong private values.
 
 ## Admin
@@ -113,6 +115,7 @@ echo YOUR_GITHUB_TOKEN | docker login ghcr.io -u kaipov24 --password-stdin
 
 Automatic laptop deploy uses a GitHub self-hosted runner. Setup guide: `docs/laptop-runner.md`.
 Laptop backup and restore commands: `docs/laptop-operations.md`.
+Cloudflare R2 resume storage setup: `docs/cloudflare-r2.md`.
 
 Quick runner setup on the laptop:
 

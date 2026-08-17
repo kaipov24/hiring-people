@@ -62,6 +62,12 @@ jobs:
           SMTP_USER=${{ secrets.SMTP_USER }}
           SMTP_PASS=${{ secrets.SMTP_PASS }}
           MAIL_FROM=${{ vars.MAIL_FROM || 'kaipov.kayrat@gmail.com' }}
+          STORAGE_DRIVER=${{ vars.STORAGE_DRIVER || 'local' }}
+          R2_ENDPOINT=${{ vars.R2_ENDPOINT }}
+          R2_BUCKET=${{ vars.R2_BUCKET }}
+          R2_REGION=${{ vars.R2_REGION || 'auto' }}
+          R2_ACCESS_KEY_ID=${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY=${{ secrets.R2_SECRET_ACCESS_KEY }}
           EOF
 
           printf '%s' '${{ secrets.MONGODB_PASSWORD }}' > "$DEPLOY_DIR/secrets/mongodb_password"

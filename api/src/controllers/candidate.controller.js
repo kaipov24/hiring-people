@@ -1,10 +1,19 @@
-import path from "node:path";
-
-import { uploadRoot } from "../config/uploads.js";
+import { deleteCvFile, saveCvFile, streamCvFile } from "../config/storage.js";
 import { CandidateProfile } from "../models/candidate-profile.model.js";
 import { CandidateStatus, candidateStatuses } from "../models/candidate-status.model.js";
 import { Company } from "../models/company.model.js";
 import { ProfileView } from "../models/profile-view.model.js";
+
+const cvPayload = (cv) => {
+  if (!cv?.originalName) return null;
+
+  return {
+    originalName: cv.originalName,
+    mimeType: cv.mimeType,
+    size: cv.size,
+    uploadedAt: cv.uploadedAt
+  };
+};
 
 const profilePayload = (profile) => ({
   id: profile.id,
@@ -22,7 +31,7 @@ const profilePayload = (profile) => ({
     messenger: profile.contacts?.messenger || "",
     messengerType: profile.contacts?.messengerType || "telegram"
   },
-  cv: profile.cv,
+  cv: cvPayload(profile.cv),
   createdAt: profile.createdAt,
   updatedAt: profile.updatedAt
 });
@@ -141,12 +150,21 @@ export const uploadMyCv = async (req, res) => {
     throw error;
   }
 
+  const existingProfile = await CandidateProfile.findOne({ user: req.user.id });
+  const storedFile = await saveCvFile({
+    userId: req.user.id,
+    file: req.file
+  });
+
   const profile = await CandidateProfile.findOneAndUpdate(
     { user: req.user.id },
     {
       $set: {
         cv: {
-          filename: req.file.filename,
+          filename: storedFile.filename,
+          storageDriver: storedFile.storageDriver,
+          storageKey: storedFile.storageKey,
+          bucket: storedFile.bucket,
           originalName: req.file.originalname,
           mimeType: req.file.mimetype,
           size: req.file.size,
@@ -162,6 +180,8 @@ export const uploadMyCv = async (req, res) => {
     }
   ).populate("user", "name email role");
 
+  await deleteCvFile(existingProfile?.cv);
+
   res.status(200).json({
     candidate: profilePayload(profile)
   });
@@ -176,9 +196,25 @@ export const downloadCandidateCv = async (req, res) => {
     throw error;
   }
 
-  const cvPath = path.resolve(uploadRoot, profile.cv.filename);
+  const stream = await streamCvFile(profile.cv);
+  const encodedFilename = encodeURIComponent(profile.cv.originalName);
 
-  res.download(cvPath, profile.cv.originalName);
+  res.setHeader("Content-Type", profile.cv.mimeType || "application/octet-stream");
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="resume"; filename*=UTF-8''${encodedFilename}`
+  );
+
+  stream.on("error", (error) => {
+    if (!res.headersSent) {
+      res.status(404).json({ error: { message: "Резюме не найдено", status: 404 } });
+      return;
+    }
+
+    res.destroy(error);
+  });
+
+  stream.pipe(res);
 };
 
 export const listMyProfileViews = async (req, res) => {
