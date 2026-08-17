@@ -2,6 +2,37 @@
 
 Use this setup when GitHub Pages serves the always-online landing page and the full app runs on your Linux laptop.
 
+## Temporary Internet Access Without A Domain
+
+Use this for testing before buying a domain. It creates a temporary `trycloudflare.com` URL. The URL changes when the tunnel restarts.
+
+On the laptop:
+
+```bash
+cd /opt/inclusive-hire
+docker compose -f compose.yaml -f compose.quick-tunnel.yaml up -d cloudflared-quick
+docker logs inclusive-hire-cloudflared-quick 2>&1 | grep -o 'https://[^ ]*trycloudflare.com' | tail -1
+```
+
+Open the printed URL in a browser.
+
+If registration and password reset emails should use this public URL, update these GitHub repository variables to the printed URL:
+
+```text
+PUBLIC_APP_URL
+VITE_APP_BASE_URL
+APP_BASE_URL
+```
+
+Then rerun:
+
+```text
+Actions -> Deploy laptop -> Run workflow
+Actions -> Deploy landing page -> Run workflow
+```
+
+Do not expose Mailpit to the internet. Mailpit is only for local email testing.
+
 ## 1. Prepare DNS and Tunnel
 
 In Cloudflare Zero Trust:
@@ -53,7 +84,7 @@ openssl rand -base64 64 > secrets/jwt_secret
 Check the configuration:
 
 ```bash
-./scripts/check-homelab-env.sh --require-tunnel
+./scripts/check-env.sh --require-tunnel
 ```
 
 ## 3. Start The App

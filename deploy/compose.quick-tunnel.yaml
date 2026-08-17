@@ -1,0 +1,16 @@
+services:
+  cloudflared-quick:
+    image: cloudflare/cloudflared:latest
+    container_name: inclusive-hire-cloudflared-quick
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --url http://nginx:80
+    networks:
+      - inclusive_hire_net
+    depends_on:
+      nginx:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"

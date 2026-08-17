@@ -88,6 +88,7 @@ docker compose -f compose.yaml -f compose.homelab.yaml up -d
 Set `CLOUDFLARE_TUNNEL_TOKEN` in `.env` before using the tunnel override.
 
 Full setup guide: `docs/homelab-cloudflare.md`.
+Temporary internet access without a domain is also documented there.
 
 ## Image Deploy
 
