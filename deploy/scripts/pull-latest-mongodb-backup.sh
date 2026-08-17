@@ -28,7 +28,7 @@ latest_key="$(
     -e AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID" \
     -e AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY" \
     -e AWS_DEFAULT_REGION="${R2_REGION:-auto}" \
-    amazon/aws-cli:2 \
+    public.ecr.aws/aws-cli/aws-cli:latest \
     --endpoint-url "$R2_ENDPOINT" \
     s3api list-objects-v2 \
     --bucket "$R2_BUCKET" \
@@ -47,7 +47,7 @@ docker run --rm \
   -e AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY" \
   -e AWS_DEFAULT_REGION="${R2_REGION:-auto}" \
   -v "${output_abs_dir}:/backup" \
-  amazon/aws-cli:2 \
+  public.ecr.aws/aws-cli/aws-cli:latest \
   --endpoint-url "$R2_ENDPOINT" \
   s3 cp "s3://${R2_BUCKET}/${latest_key}" "/backup/${output_name}"
 

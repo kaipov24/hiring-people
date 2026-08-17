@@ -49,7 +49,7 @@ if [ "${BACKUP_STORAGE_DRIVER:-local}" = "r2" ]; then
     -e AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY" \
     -e AWS_DEFAULT_REGION="${R2_REGION:-auto}" \
     -v "${backup_abs_dir}:/backup:ro" \
-    amazon/aws-cli:2 \
+    public.ecr.aws/aws-cli/aws-cli:latest \
     --endpoint-url "$R2_ENDPOINT" \
     s3 cp "/backup/${archive_name}" "s3://${R2_BUCKET}/${object_key}"
 
