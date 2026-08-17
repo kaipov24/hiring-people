@@ -10,9 +10,9 @@ const candidateStatusSchema = new mongoose.Schema(
       required: true,
       index: true
     },
-    company: {
+    recruiter: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Company",
+      ref: "Recruiter",
       required: true,
       index: true
     },
@@ -33,7 +33,7 @@ const candidateStatusSchema = new mongoose.Schema(
   }
 );
 
-candidateStatusSchema.index({ candidate: 1, company: 1 }, { unique: true });
+candidateStatusSchema.index({ candidate: 1, recruiter: 1 }, { unique: true });
 
 export const CandidateStatus = mongoose.model("CandidateStatus", candidateStatusSchema);
 export { statuses as candidateStatuses };

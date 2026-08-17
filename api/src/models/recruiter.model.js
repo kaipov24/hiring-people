@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const companySchema = new mongoose.Schema(
+const recruiterSchema = new mongoose.Schema(
   {
     owner: {
       type: mongoose.Schema.Types.ObjectId,
@@ -56,6 +56,6 @@ const companySchema = new mongoose.Schema(
   }
 );
 
-companySchema.index({ name: 1 });
+recruiterSchema.index({ name: 1 });
 
-export const Company = mongoose.model("Company", companySchema);
+export const Recruiter = mongoose.model("Recruiter", recruiterSchema);

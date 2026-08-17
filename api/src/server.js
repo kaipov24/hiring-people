@@ -1,5 +1,6 @@
 import app from "./app.js";
 import { connectDatabase, disconnectDatabase } from "./config/database.js";
+import { runMigrations } from "./config/migrations.js";
 import { loadDockerSecrets } from "./config/secrets.js";
 
 const port = Number.parseInt(process.env.PORT ?? "4000", 10);
@@ -10,6 +11,7 @@ const start = async () => {
   loadDockerSecrets();
 
   await connectDatabase();
+  await runMigrations();
 
   server = app.listen(port, () => {
     console.log(`inclusive-hire API listening on port ${port}`);

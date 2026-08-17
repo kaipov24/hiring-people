@@ -1,13 +1,13 @@
 import { sendPasswordResetEmail, sendTestEmail, verifyEmailTransport } from "../config/email.js";
 import { ActivityEvent } from "../models/activity-event.model.js";
 import { CandidateProfile } from "../models/candidate-profile.model.js";
-import { Company } from "../models/company.model.js";
+import { Recruiter } from "../models/recruiter.model.js";
 import { User } from "../models/user.model.js";
 import { createPasswordResetToken } from "../utils/tokens.js";
 
 const testUserEmailPatterns = [
   /^seed\./,
-  /^company\./,
+  /^recruiter\./,
   /^walkthrough\./,
   /\+e2e@/,
   /@example\.com$/
@@ -60,12 +60,12 @@ export const sendUserPasswordReset = async (req, res) => {
 
 export const getActivitySummary = async (_req, res) => {
   const since = new Date(Date.now() - 1000 * 60 * 60 * 24 * 7);
-  const [totalUsers, newUsers, candidates, employers, companies, anonymousMainViews, authenticatedMainViews] = await Promise.all([
+  const [totalUsers, newUsers, candidates, employers, recruiters, anonymousMainViews, authenticatedMainViews] = await Promise.all([
     User.countDocuments(),
     User.countDocuments({ createdAt: { $gte: since } }),
     CandidateProfile.countDocuments(),
     User.countDocuments({ role: "hiring_manager" }),
-    Company.countDocuments(),
+    Recruiter.countDocuments(),
     ActivityEvent.countDocuments({ type: "page_view", page: "home", authenticated: false }),
     ActivityEvent.countDocuments({ type: "page_view", page: "home", authenticated: true })
   ]);
@@ -76,7 +76,7 @@ export const getActivitySummary = async (_req, res) => {
       newUsersLast7Days: newUsers,
       candidates,
       employers,
-      companies,
+      recruiters,
       mainPageViewsBeforeLogin: anonymousMainViews,
       mainPageViewsAfterLogin: authenticatedMainViews
     }

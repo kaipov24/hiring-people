@@ -44,7 +44,7 @@ const emptyProfileForm = {
   messengerType: "telegram",
   messenger: ""
 };
-const emptyCompanyForm = {
+const emptyRecruiterForm = {
   name: "",
   description: "",
   website: "",
@@ -127,7 +127,7 @@ const setDocumentSeo = ({ title, description, robots, canonicalPath }) => {
   setCanonical(canonicalUrl);
 };
 
-const seoForAppState = ({ user, page, selectedProfile, selectedCompany }) => {
+const seoForAppState = ({ user, page, selectedProfile, selectedRecruiter }) => {
   if (!user) return publicSeo;
 
   if (selectedProfile) {
@@ -139,10 +139,10 @@ const seoForAppState = ({ user, page, selectedProfile, selectedCompany }) => {
     };
   }
 
-  if (selectedCompany) {
+  if (selectedRecruiter) {
     return {
-      title: `${selectedCompany.name ?? "Профиль компании"} | inclusive-hire`,
-      description: "Профиль компании доступен зарегистрированным пользователям inclusive-hire.",
+      title: `${selectedRecruiter.name ?? "Профиль рекрутера"} | inclusive-hire`,
+      description: "Профиль рекрутера доступен зарегистрированным пользователям inclusive-hire.",
       robots: "noindex,nofollow",
       canonicalPath: "/"
     };
@@ -152,8 +152,8 @@ const seoForAppState = ({ user, page, selectedProfile, selectedCompany }) => {
     adminActivity: "Администрирование активности | inclusive-hire",
     adminUsers: "Администрирование пользователей | inclusive-hire",
     candidates: "Профили соискателей | inclusive-hire",
-    company: "Профиль компании | inclusive-hire",
-    companies: "Компании | inclusive-hire",
+    recruiter: "Профиль рекрутера | inclusive-hire",
+    recruiters: "Рекрутеры | inclusive-hire",
     directory: "Профили соискателей | inclusive-hire",
     profile: "Мой профиль соискателя | inclusive-hire"
   };
@@ -211,8 +211,8 @@ const readCandidateRoute = () => {
   return readEntityRoute("candidates");
 };
 
-const readCompanyRoute = () => {
-  return readEntityRoute("companies");
+const readRecruiterRoute = () => {
+  return readEntityRoute("recruiters");
 };
 
 function App() {
@@ -233,14 +233,14 @@ function App() {
   const [profileViews, setProfileViews] = useState([]);
   const [profileViewsLoaded, setProfileViewsLoaded] = useState(false);
   const [profileViewsLoading, setProfileViewsLoading] = useState(false);
-  const [companyForm, setCompanyForm] = useState(emptyCompanyForm);
-  const [companyProfile, setCompanyProfile] = useState(null);
-  const [companyEditing, setCompanyEditing] = useState(true);
+  const [recruiterForm, setRecruiterForm] = useState(emptyRecruiterForm);
+  const [recruiterProfile, setRecruiterProfile] = useState(null);
+  const [recruiterEditing, setRecruiterEditing] = useState(true);
   const [filters, setFilters] = useState(emptyFilters);
   const [employees, setEmployees] = useState([]);
   const [selectedProfile, setSelectedProfile] = useState(null);
-  const [companies, setCompanies] = useState([]);
-  const [selectedCompany, setSelectedCompany] = useState(null);
+  const [recruiters, setRecruiters] = useState([]);
+  const [selectedRecruiter, setSelectedRecruiter] = useState(null);
   const [adminUsers, setAdminUsers] = useState([]);
   const [adminActivity, setAdminActivity] = useState(null);
   const [adminNotice, setAdminNotice] = useState("");
@@ -263,7 +263,7 @@ function App() {
     setPageState(nextPage);
     window.history.replaceState(null, "", nextPage === "home" ? "/" : `/#${nextPage}`);
     setSelectedProfile(null);
-    setSelectedCompany(null);
+    setSelectedRecruiter(null);
     setFormNotice("");
   };
 
@@ -307,8 +307,8 @@ function App() {
   }, []);
 
   useEffect(() => {
-    setDocumentSeo(seoForAppState({ user, page, selectedProfile, selectedCompany }));
-  }, [user?.id, page, selectedProfile?.id, selectedCompany?.id]);
+    setDocumentSeo(seoForAppState({ user, page, selectedProfile, selectedRecruiter }));
+  }, [user?.id, page, selectedProfile?.id, selectedRecruiter?.id]);
 
   useEffect(() => {
     if (session) window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
@@ -322,7 +322,7 @@ function App() {
     }
 
     setAccountForm({ name: user.name ?? "" });
-    setPageState(readCompanyRoute() ? "companies" : isManager && readCandidateRoute() ? "candidate" : isAdmin ? "adminActivity" : isManager ? "directory" : "profile");
+    setPageState(readRecruiterRoute() ? "recruiters" : isManager && readCandidateRoute() ? "candidate" : isAdmin ? "adminActivity" : isManager ? "directory" : "profile");
   }, [user?.id, user?.role, isAdmin, isManager]);
 
   useEffect(() => {
@@ -354,25 +354,25 @@ function App() {
   useEffect(() => {
     if (!isManager || !token) return;
     loadEmployees(undefined, filters);
-    request("/api/companies/me", { headers: authHeaders(token) })
+    request("/api/recruiters/me", { headers: authHeaders(token) })
       .then((data) => {
-        const company = data.company;
-        setCompanyProfile(company);
-        setCompanyForm({
-          name: company.name ?? "",
-          description: company.description ?? "",
-          website: company.website ?? "",
-          contactEmail: company.contacts?.email ?? "",
-          phone: company.contacts?.phone ?? "",
-          messenger: company.contacts?.messenger ?? "",
-          accessibilityCommitments: (company.accessibilityCommitments ?? []).join(", ")
+        const recruiter = data.recruiter;
+        setRecruiterProfile(recruiter);
+        setRecruiterForm({
+          name: recruiter.name ?? "",
+          description: recruiter.description ?? "",
+          website: recruiter.website ?? "",
+          contactEmail: recruiter.contacts?.email ?? "",
+          phone: recruiter.contacts?.phone ?? "",
+          messenger: recruiter.contacts?.messenger ?? "",
+          accessibilityCommitments: (recruiter.accessibilityCommitments ?? []).join(", ")
         });
-        setCompanyEditing(false);
+        setRecruiterEditing(false);
       })
       .catch(() => {
-        setCompanyProfile(null);
-        setCompanyForm(emptyCompanyForm);
-        setCompanyEditing(true);
+        setRecruiterProfile(null);
+        setRecruiterForm(emptyRecruiterForm);
+        setRecruiterEditing(true);
       });
   }, [isManager, token]);
 
@@ -412,32 +412,32 @@ function App() {
   useEffect(() => {
     if (!user || !token) return;
     if (isCandidate && page === "candidates") loadEmployees(undefined, filters);
-    if (page === "companies") loadCompanies();
+    if (page === "recruiters") loadRecruiters();
   }, [user?.id, isCandidate, token, page]);
 
   useEffect(() => {
     if (!user || !token) return;
 
-    const loadCompanyRoute = async () => {
-      const companyId = readCompanyRoute();
-      if (!companyId) return;
+    const loadRecruiterRoute = async () => {
+      const recruiterId = readRecruiterRoute();
+      if (!recruiterId) return;
 
       try {
-        const data = await request(`/api/companies/${companyId}`, { headers: authHeaders(token) });
-        setSelectedCompany(data.company);
-        setPageState("companies");
+        const data = await request(`/api/recruiters/${recruiterId}`, { headers: authHeaders(token) });
+        setSelectedRecruiter(data.recruiter);
+        setPageState("recruiters");
       } catch (error) {
         setFormNotice(error.message);
-        setPage(isCandidate ? "companies" : isManager ? "directory" : "home");
+        setPage(isCandidate ? "recruiters" : isManager ? "directory" : "home");
       }
     };
 
-    loadCompanyRoute();
-    window.addEventListener("hashchange", loadCompanyRoute);
-    window.addEventListener("popstate", loadCompanyRoute);
+    loadRecruiterRoute();
+    window.addEventListener("hashchange", loadRecruiterRoute);
+    window.addEventListener("popstate", loadRecruiterRoute);
     return () => {
-      window.removeEventListener("hashchange", loadCompanyRoute);
-      window.removeEventListener("popstate", loadCompanyRoute);
+      window.removeEventListener("hashchange", loadRecruiterRoute);
+      window.removeEventListener("popstate", loadRecruiterRoute);
     };
   }, [user?.id, token]);
 
@@ -490,9 +490,9 @@ function App() {
     setProfileViewsLoaded(false);
     setProfileViewsLoading(false);
     setEmployees([]);
-    setCompanies([]);
+    setRecruiters([]);
     setSelectedProfile(null);
-    setSelectedCompany(null);
+    setSelectedRecruiter(null);
     setAdminUsers([]);
     setAdminActivity(null);
     setAdminResetState({});
@@ -710,28 +710,28 @@ function App() {
     }
   };
 
-  const saveCompany = async (event) => {
+  const saveRecruiter = async (event) => {
     event.preventDefault();
     setFormNotice("");
 
     try {
-      await request("/api/companies/me", {
+      await request("/api/recruiters/me", {
         method: "PUT",
         headers: { "Content-Type": "application/json", ...authHeaders(token) },
         body: JSON.stringify({
-          ...companyForm,
-          website: companyForm.website || undefined,
+          ...recruiterForm,
+          website: recruiterForm.website || undefined,
           contacts: {
-            email: companyForm.contactEmail || undefined,
-            phone: companyForm.phone || undefined,
-            messenger: companyForm.messenger || undefined
+            email: recruiterForm.contactEmail || undefined,
+            phone: recruiterForm.phone || undefined,
+            messenger: recruiterForm.messenger || undefined
           },
-          accessibilityCommitments: toList(companyForm.accessibilityCommitments)
+          accessibilityCommitments: toList(recruiterForm.accessibilityCommitments)
         })
       });
-      const company = await request("/api/companies/me", { headers: authHeaders(token) });
-      setCompanyProfile(company.company);
-      setCompanyEditing(false);
+      const recruiter = await request("/api/recruiters/me", { headers: authHeaders(token) });
+      setRecruiterProfile(recruiter.recruiter);
+      setRecruiterEditing(false);
       loadEmployees(undefined, filters);
     } catch (error) {
       if (handleAuthExpired(error)) return;
@@ -769,21 +769,21 @@ function App() {
     }
   };
 
-  const loadCompanies = async () => {
+  const loadRecruiters = async () => {
     try {
-      const data = await request("/api/companies", { headers: authHeaders(token) });
-      setCompanies(data.companies ?? []);
+      const data = await request("/api/recruiters", { headers: authHeaders(token) });
+      setRecruiters(data.recruiters ?? []);
     } catch (error) {
       setFormNotice(error.message);
     }
   };
 
-  const openCompany = async (company) => {
+  const openRecruiter = async (recruiter) => {
     try {
-      const data = await request(`/api/companies/${company.id}`, { headers: authHeaders(token) });
-      setSelectedCompany(data.company);
-      setPageState("companies");
-      window.history.pushState(null, "", `/companies/${company.id}`);
+      const data = await request(`/api/recruiters/${recruiter.id}`, { headers: authHeaders(token) });
+      setSelectedRecruiter(data.recruiter);
+      setPageState("recruiters");
+      window.history.pushState(null, "", `/recruiters/${recruiter.id}`);
     } catch (error) {
       setFormNotice(error.message);
     }
@@ -893,14 +893,14 @@ function App() {
             canManageCandidates
           />
         )}
-        {isManager && page === "company" && (
-          <CompanyPage
-            companyForm={companyForm}
-            setCompanyForm={setCompanyForm}
-            companyProfile={companyProfile}
-            companyEditing={companyEditing}
-            setCompanyEditing={setCompanyEditing}
-            saveCompany={saveCompany}
+        {isManager && page === "recruiter" && (
+          <RecruiterPage
+            recruiterForm={recruiterForm}
+            setRecruiterForm={setRecruiterForm}
+            recruiterProfile={recruiterProfile}
+            recruiterEditing={recruiterEditing}
+            setRecruiterEditing={setRecruiterEditing}
+            saveRecruiter={saveRecruiter}
             notice={formNotice}
           />
         )}
@@ -938,13 +938,13 @@ function App() {
             canManageCandidates={false}
           />
         )}
-        {user && page === "companies" && (
-          <CompaniesPage
-            companies={companies}
-            selectedCompany={selectedCompany}
-            setSelectedCompany={setSelectedCompany}
-            openCompany={openCompany}
-            loadCompanies={loadCompanies}
+        {user && page === "recruiters" && (
+          <RecruitersPage
+            recruiters={recruiters}
+            selectedRecruiter={selectedRecruiter}
+            setSelectedRecruiter={setSelectedRecruiter}
+            openRecruiter={openRecruiter}
+            loadRecruiters={loadRecruiters}
             setPage={setPage}
             notice={formNotice}
           />
@@ -990,12 +990,12 @@ function Header({ user, page, isCandidate, isManager, isAdmin, setPage, showAuth
       <button className="brand-button" type="button" onClick={openStartPage}>inclusive-hire</button>
       <nav aria-label="Главная навигация">
         {isManager && <button type="button" className={page === "directory" ? "nav-active" : ""} onClick={() => setPage("directory")}>Кандидаты</button>}
-        {isManager && <button type="button" className={page === "company" ? "nav-active" : ""} onClick={() => setPage("company")}>Моя компания</button>}
+        {isManager && <button type="button" className={page === "recruiter" ? "nav-active" : ""} onClick={() => setPage("recruiter")}>Профиль рекрутера</button>}
         {isAdmin && <button type="button" className={page === "adminActivity" ? "nav-active" : ""} onClick={() => setPage("adminActivity")}>Активность</button>}
         {isAdmin && <button type="button" className={page === "adminUsers" ? "nav-active" : ""} onClick={() => setPage("adminUsers")}>Пользователи</button>}
         {isCandidate && <button type="button" className={page === "profile" ? "nav-active" : ""} onClick={() => setPage("profile")}>Мой профиль</button>}
         {isCandidate && <button type="button" className={page === "candidates" || page === "candidate" ? "nav-active" : ""} onClick={() => setPage("candidates")}>Кандидаты</button>}
-        {isCandidate && <button type="button" className={page === "companies" ? "nav-active" : ""} onClick={() => setPage("companies")}>Компании</button>}
+        {isCandidate && <button type="button" className={page === "recruiters" ? "nav-active" : ""} onClick={() => setPage("recruiters")}>Рекрутеры</button>}
       </nav>
       <div className="header-actions">
         {user ? (
@@ -1023,13 +1023,13 @@ function Hero({ user, isCandidate, isManager, isAdmin, page, showAuth, setPage, 
         ? "Пользователи"
         : "Активность платформы"
     : isManager
-      ? page === "company"
-        ? "Профиль компании"
+      ? page === "recruiter"
+        ? "Профиль рекрутера"
         : "Профили соискателей"
       : page === "candidates"
         ? "Профили соискателей"
-        : page === "companies"
-          ? "Компании"
+        : page === "recruiters"
+          ? "Рекрутеры"
       : "Ваш профиль соискателя";
   const text = publicHero
     ? "Работодатели находят сильных специалистов, соискатели показывают опыт, навыки и удобный формат работы."
@@ -1038,13 +1038,13 @@ function Hero({ user, isCandidate, isManager, isAdmin, page, showAuth, setPage, 
         ? "Просматривайте аккаунты и отправляйте ссылки для смены пароля."
         : "Следите за пользователями, регистрациями и просмотрами главной страницы."
     : isManager
-      ? page === "company"
-        ? "Заполните описание, контакты и условия работы, чтобы соискатели понимали вашу команду."
+      ? page === "recruiter"
+        ? "Заполните описание, контакты и условия работы, чтобы соискатели понимали, с кем они будут общаться."
         : "Используйте поиск, фильтры и карточки кандидатов, чтобы быстро найти человека под роль и открыть полный профиль."
       : page === "candidates"
         ? "Смотрите примеры профилей, навыки и форматы работы других соискателей."
-        : page === "companies"
-          ? "Изучайте компании, условия, контакты и подход к инклюзивному найму."
+        : page === "recruiters"
+          ? "Изучайте рекрутеров, контакты, условия и подход к инклюзивному найму."
       : "Заполните профиль так, чтобы работодатель сразу понял ваш опыт, формат работы и условия доступности.";
 
   return (
@@ -1105,7 +1105,7 @@ function AdminPage({ page, users, activity, notice, resetState, loadUsers, loadA
         ["Новые за 7 дней", activity.newUsersLast7Days],
         ["Профили соискателей", activity.candidates],
         ["Работодатели", activity.employers],
-        ["Компании", activity.companies],
+        ["Рекрутеры", activity.recruiters],
         ["Главная до входа", activity.mainPageViewsBeforeLogin],
         ["Главная после входа", activity.mainPageViewsAfterLogin]
       ]
@@ -1297,55 +1297,55 @@ function DirectoryPage({ page, filters, setFilters, loadEmployees, employees, se
   );
 }
 
-function CompanyPage({ companyForm, setCompanyForm, companyProfile, companyEditing, setCompanyEditing, saveCompany, notice }) {
+function RecruiterPage({ recruiterForm, setRecruiterForm, recruiterProfile, recruiterEditing, setRecruiterEditing, saveRecruiter, notice }) {
   return (
-    <section className="company-profile-page">
+    <section className="recruiter-profile-page">
       <div className="profile-title">
         <div>
-          <p className="eyebrow">Работодатель</p>
-          <h2>{companyProfile && !companyEditing ? "Профиль компании" : "Создать профиль компании"}</h2>
-          <p>Эта информация будет доступна соискателям на странице компании.</p>
+          <p className="eyebrow">Рекрутер</p>
+          <h2>{recruiterProfile && !recruiterEditing ? "Профиль рекрутера" : "Создать профиль рекрутера"}</h2>
+          <p>Эта информация будет доступна соискателям на странице рекрутера.</p>
         </div>
-        {companyProfile && !companyEditing && (
-          <button className="button secondary" type="button" onClick={() => setCompanyEditing(true)}>Редактировать</button>
+        {recruiterProfile && !recruiterEditing && (
+          <button className="button secondary" type="button" onClick={() => setRecruiterEditing(true)}>Редактировать</button>
         )}
       </div>
       {notice && <p className="inline-notice error" role="alert">{notice}</p>}
-      <CompanyPanel
-        companyForm={companyForm}
-        setCompanyForm={setCompanyForm}
-        companyProfile={companyProfile}
-        companyEditing={companyEditing}
-        saveCompany={saveCompany}
+      <RecruiterPanel
+        recruiterForm={recruiterForm}
+        setRecruiterForm={setRecruiterForm}
+        recruiterProfile={recruiterProfile}
+        recruiterEditing={recruiterEditing}
+        saveRecruiter={saveRecruiter}
       />
     </section>
   );
 }
 
-function CompanyPanel({ companyForm, setCompanyForm, companyProfile, companyEditing, saveCompany }) {
-  if (companyProfile && !companyEditing) {
+function RecruiterPanel({ recruiterForm, setRecruiterForm, recruiterProfile, recruiterEditing, saveRecruiter }) {
+  if (recruiterProfile && !recruiterEditing) {
     return (
-      <article className="company-panel company-page-card company-overview-card">
-        <div className="company-overview-header">
-          <div className="logo-mark company-logo">{companyProfile.name.slice(0, 2).toUpperCase()}</div>
+      <article className="recruiter-panel recruiter-page-card recruiter-overview-card">
+        <div className="recruiter-overview-header">
+          <div className="logo-mark recruiter-logo">{recruiterProfile.name.slice(0, 2).toUpperCase()}</div>
           <div>
-            <h3>{companyProfile.name}</h3>
-            {companyProfile.website && (
-              <a className="company-website" href={companyProfile.website} target="_blank" rel="noreferrer">
-                {companyProfile.website}
+            <h3>{recruiterProfile.name}</h3>
+            {recruiterProfile.website && (
+              <a className="recruiter-website" href={recruiterProfile.website} target="_blank" rel="noreferrer">
+                {recruiterProfile.website}
               </a>
             )}
           </div>
         </div>
-        {companyProfile.description && <p className="company-description">{companyProfile.description}</p>}
-        <div className="company-overview-grid">
-          <section className="company-info-block">
+        {recruiterProfile.description && <p className="recruiter-description">{recruiterProfile.description}</p>}
+        <div className="recruiter-overview-grid">
+          <section className="recruiter-info-block">
             <h4>Контакты</h4>
-            <CompanyContacts company={companyProfile} />
+            <RecruiterContacts recruiter={recruiterProfile} />
           </section>
-          <section className="company-info-block">
+          <section className="recruiter-info-block">
             <h4>Условия работы</h4>
-            <TagList items={companyProfile.accessibilityCommitments ?? []} empty="Условия пока не указаны." />
+            <TagList items={recruiterProfile.accessibilityCommitments ?? []} empty="Условия пока не указаны." />
           </section>
         </div>
       </article>
@@ -1353,86 +1353,86 @@ function CompanyPanel({ companyForm, setCompanyForm, companyProfile, companyEdit
   }
 
   return (
-    <article className="company-panel company-page-card">
-      <form onSubmit={saveCompany}>
-        <h3>Компания</h3>
-        <div className="company-form-grid">
-          <Field id="companyName" label="Название" value={companyForm.name} onChange={(value) => setCompanyForm({ ...companyForm, name: value })} required className="span-2" />
-          <Field id="website" label="Сайт" type="url" value={companyForm.website} onChange={(value) => setCompanyForm({ ...companyForm, website: value })} className="span-2" />
-          <Field id="companyContactEmail" label="Email для связи" type="email" value={companyForm.contactEmail} onChange={(value) => setCompanyForm({ ...companyForm, contactEmail: value })} />
-          <Field id="companyPhone" label="Телефон" value={companyForm.phone} onChange={(value) => setCompanyForm({ ...companyForm, phone: value })} />
-          <Field id="companyMessenger" label="Мессенджер" value={companyForm.messenger} onChange={(value) => setCompanyForm({ ...companyForm, messenger: value })} placeholder="@company или номер" className="span-2" />
-          <TextField id="companyDescription" label="Описание" value={companyForm.description} onChange={(value) => setCompanyForm({ ...companyForm, description: value })} rows="4" className="span-2" />
-          <TextField id="commitments" label="Инклюзивные условия" value={companyForm.accessibilityCommitments} onChange={(value) => setCompanyForm({ ...companyForm, accessibilityCommitments: value })} rows="4" className="span-2" />
+    <article className="recruiter-panel recruiter-page-card">
+      <form onSubmit={saveRecruiter}>
+        <h3>Рекрутер</h3>
+        <div className="recruiter-form-grid">
+          <Field id="recruiterName" label="Имя или организация" value={recruiterForm.name} onChange={(value) => setRecruiterForm({ ...recruiterForm, name: value })} required className="span-2" />
+          <Field id="website" label="Сайт" type="url" value={recruiterForm.website} onChange={(value) => setRecruiterForm({ ...recruiterForm, website: value })} className="span-2" />
+          <Field id="recruiterContactEmail" label="Email для связи" type="email" value={recruiterForm.contactEmail} onChange={(value) => setRecruiterForm({ ...recruiterForm, contactEmail: value })} />
+          <Field id="recruiterPhone" label="Телефон" value={recruiterForm.phone} onChange={(value) => setRecruiterForm({ ...recruiterForm, phone: value })} />
+          <Field id="recruiterMessenger" label="Мессенджер" value={recruiterForm.messenger} onChange={(value) => setRecruiterForm({ ...recruiterForm, messenger: value })} placeholder="@username или номер" className="span-2" />
+          <TextField id="recruiterDescription" label="Описание" value={recruiterForm.description} onChange={(value) => setRecruiterForm({ ...recruiterForm, description: value })} rows="4" className="span-2" />
+          <TextField id="commitments" label="Инклюзивные условия" value={recruiterForm.accessibilityCommitments} onChange={(value) => setRecruiterForm({ ...recruiterForm, accessibilityCommitments: value })} rows="4" className="span-2" />
         </div>
-        <button className="button secondary full" type="submit">Сохранить компанию</button>
+        <button className="button secondary full" type="submit">Сохранить профиль рекрутера</button>
       </form>
     </article>
   );
 }
 
-function CompaniesPage({ companies, selectedCompany, setSelectedCompany, openCompany, loadCompanies, setPage, notice }) {
-  if (selectedCompany) {
+function RecruitersPage({ recruiters, selectedRecruiter, setSelectedRecruiter, openRecruiter, loadRecruiters, setPage, notice }) {
+  if (selectedRecruiter) {
     return (
-      <section className="companies-section">
+      <section className="recruiters-section">
         <div className="profile-title">
           <div>
-            <p className="eyebrow">Компания</p>
-            <h2>{selectedCompany.name}</h2>
-            {selectedCompany.website && <p><a href={selectedCompany.website} target="_blank" rel="noreferrer">{selectedCompany.website}</a></p>}
+            <p className="eyebrow">Рекрутер</p>
+            <h2>{selectedRecruiter.name}</h2>
+            {selectedRecruiter.website && <p><a href={selectedRecruiter.website} target="_blank" rel="noreferrer">{selectedRecruiter.website}</a></p>}
           </div>
-          <button className="button secondary" type="button" onClick={() => { setSelectedCompany(null); setPage("companies"); }}>Назад к компаниям</button>
+          <button className="button secondary" type="button" onClick={() => { setSelectedRecruiter(null); setPage("recruiters"); }}>Назад к рекрутерам</button>
         </div>
         {notice && <p className="inline-notice error" role="alert">{notice}</p>}
-        <article className="company-detail-card">
-          {selectedCompany.description && <p>{selectedCompany.description}</p>}
-          <CompanyContacts company={selectedCompany} />
+        <article className="recruiter-detail-card">
+          {selectedRecruiter.description && <p>{selectedRecruiter.description}</p>}
+          <RecruiterContacts recruiter={selectedRecruiter} />
           <h3>Инклюзивные условия</h3>
-          <TagList items={selectedCompany.accessibilityCommitments ?? []} empty="Условия пока не указаны." />
+          <TagList items={selectedRecruiter.accessibilityCommitments ?? []} empty="Условия пока не указаны." />
         </article>
       </section>
     );
   }
 
   return (
-    <section className="companies-section">
+    <section className="recruiters-section">
       <div className="results-top">
         <div>
           <p className="eyebrow">Работодатели</p>
-          <h2>Компании</h2>
-          <p>Посмотрите описание компании, контакты и условия для инклюзивной работы.</p>
+          <h2>Рекрутеры</h2>
+          <p>Посмотрите описание рекрутера, контакты и условия для инклюзивной работы.</p>
         </div>
-        <button className="button quiet" type="button" onClick={loadCompanies}>Обновить</button>
+        <button className="button quiet" type="button" onClick={loadRecruiters}>Обновить</button>
       </div>
       {notice && <p className="inline-notice error" role="alert">{notice}</p>}
-      <div className="company-list-grid">
-        {companies.length === 0 ? (
-          <p className="empty-state">Компании пока не добавлены.</p>
+      <div className="recruiter-list-grid">
+        {recruiters.length === 0 ? (
+          <p className="empty-state">Рекрутеры пока не добавлены.</p>
         ) : (
-          companies.map((company) => <CompanyCard key={company.id} company={company} onClick={() => openCompany(company)} />)
+          recruiters.map((recruiter) => <RecruiterCard key={recruiter.id} recruiter={recruiter} onClick={() => openRecruiter(recruiter)} />)
         )}
       </div>
     </section>
   );
 }
 
-function CompanyCard({ company, onClick }) {
+function RecruiterCard({ recruiter, onClick }) {
   return (
-    <article className="company-card compact">
-      <div className="logo-mark company-logo">{company.name.slice(0, 2).toUpperCase()}</div>
-      <div className="company-card-body">
-        <h3>{company.name}</h3>
-        {company.website && <p>{company.website}</p>}
-        {company.description && <p>{company.description}</p>}
-        <CompanyContacts company={company} compact />
+    <article className="recruiter-card compact">
+      <div className="logo-mark recruiter-logo">{recruiter.name.slice(0, 2).toUpperCase()}</div>
+      <div className="recruiter-card-body">
+        <h3>{recruiter.name}</h3>
+        {recruiter.website && <p>{recruiter.website}</p>}
+        {recruiter.description && <p>{recruiter.description}</p>}
+        <RecruiterContacts recruiter={recruiter} compact />
         <button className="button primary card-action" type="button" onClick={onClick}>Подробнее</button>
       </div>
     </article>
   );
 }
 
-function CompanyContacts({ company, compact = false }) {
-  const contacts = company?.contacts ?? {};
+function RecruiterContacts({ recruiter, compact = false }) {
+  const contacts = recruiter?.contacts ?? {};
   const items = [
     contacts.email && ["Email", contacts.email, `mailto:${contacts.email}`],
     contacts.phone && ["Телефон", contacts.phone, `tel:${contacts.phone}`],
@@ -1546,13 +1546,13 @@ function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfil
             ) : (
               <ul className="views-list">
                 {profileViews.map((view) => {
-                  const companyId = view.company?.id ?? view.company?._id;
+                  const recruiterId = view.recruiter?.id ?? view.recruiter?._id;
                   return (
                     <li key={view.id}>
-                      {companyId ? (
-                        <a href={`/companies/${companyId}`}>{view.company.name ?? "Компания"}</a>
+                      {recruiterId ? (
+                        <a href={`/recruiters/${recruiterId}`}>{view.recruiter.name ?? "Рекрутер"}</a>
                     ) : (
-                      <span>Компания</span>
+                      <span>Рекрутер</span>
                     )}
                       <span>{new Date(view.viewedAt).toLocaleDateString("ru-RU")}</span>
                     </li>

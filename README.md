@@ -11,7 +11,7 @@ The site helps employers find candidates with limited abilities and helps job se
 - Separate full profile pages for each candidate.
 - Resume upload and download.
 - Cloudflare R2 storage support for uploaded resumes.
-- Editable job seeker and company profiles.
+- Editable job seeker and recruiter profiles.
 - Local email testing through Mailpit.
 
 ## Run Locally
@@ -49,7 +49,7 @@ Admins can check SMTP readiness through `/api/admin/email/status` and send a tes
 
 The public homepage is crawlable and includes canonical metadata, Open Graph/Twitter tags, JSON-LD, `robots.txt`, and `sitemap.xml`.
 
-Candidate profiles, company pages, API responses, and uploaded files are protected/private surfaces and are marked `noindex`.
+Candidate profiles, recruiter pages, API responses, and uploaded files are protected/private surfaces and are marked `noindex`.
 
 Set `PUBLIC_SITE_URL=https://kaipov24.github.io/hiring-people` before building the landing page so canonical URLs and the sitemap use the live GitHub Pages URL.
 

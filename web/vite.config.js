@@ -31,6 +31,8 @@ const seoPlugin = () => ({
         "Allow: /",
         "Disallow: /api/",
         "Disallow: /uploads/",
+        "Disallow: /candidates/",
+        "Disallow: /recruiters/",
         `Sitemap: ${siteUrl}/sitemap.xml`,
         ""
       ].join("\n")

@@ -8,9 +8,9 @@ const profileViewSchema = new mongoose.Schema(
       required: true,
       index: true
     },
-    company: {
+    recruiter: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Company",
+      ref: "Recruiter",
       required: true,
       index: true
     },
@@ -30,6 +30,6 @@ const profileViewSchema = new mongoose.Schema(
   }
 );
 
-profileViewSchema.index({ candidate: 1, company: 1, viewedAt: -1 });
+profileViewSchema.index({ candidate: 1, recruiter: 1, viewedAt: -1 });
 
 export const ProfileView = mongoose.model("ProfileView", profileViewSchema);

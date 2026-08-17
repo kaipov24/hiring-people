@@ -1,7 +1,7 @@
 import { deleteCvFile, saveCvFile, streamCvFile } from "../config/storage.js";
 import { CandidateProfile } from "../models/candidate-profile.model.js";
 import { CandidateStatus, candidateStatuses } from "../models/candidate-status.model.js";
-import { Company } from "../models/company.model.js";
+import { Recruiter } from "../models/recruiter.model.js";
 import { ProfileView } from "../models/profile-view.model.js";
 
 const cvPayload = (cv) => {
@@ -85,12 +85,12 @@ export const getCandidate = async (req, res) => {
     throw error;
   }
 
-  const company = await Company.findOne({ owner: req.user.id });
+  const recruiter = await Recruiter.findOne({ owner: req.user.id });
 
-  if (company) {
+  if (recruiter) {
     await ProfileView.create({
       candidate: profile.user.id,
-      company: company.id,
+      recruiter: recruiter.id,
       viewedBy: req.user.id
     });
   }
@@ -219,19 +219,19 @@ export const downloadCandidateCv = async (req, res) => {
 
 export const listMyProfileViews = async (req, res) => {
   const views = await ProfileView.find({ candidate: req.user.id })
-    .populate("company", "name website accessibilityCommitments")
+    .populate("recruiter", "name website accessibilityCommitments")
     .sort({ viewedAt: -1 })
     .limit(100);
 
   res.status(200).json({
     views: views.map((view) => ({
       id: view.id,
-      company: view.company
+      recruiter: view.recruiter
         ? {
-            id: view.company.id,
-            name: view.company.name,
-            website: view.company.website,
-            accessibilityCommitments: view.company.accessibilityCommitments
+            id: view.recruiter.id,
+            name: view.recruiter.name,
+            website: view.recruiter.website,
+            accessibilityCommitments: view.recruiter.accessibilityCommitments
           }
         : null,
       viewedAt: view.viewedAt
@@ -248,23 +248,23 @@ export const updateCandidateStatus = async (req, res) => {
     throw error;
   }
 
-  const company = await Company.findOne({ owner: req.user.id });
+  const recruiter = await Recruiter.findOne({ owner: req.user.id });
 
-  if (!company) {
-    const error = new Error("Заполните профиль компании перед изменением статусов");
+  if (!recruiter) {
+    const error = new Error("Заполните профиль рекрутера перед изменением статусов");
     error.status = 400;
     throw error;
   }
 
   const previousStatus = await CandidateStatus.findOne({
     candidate: profile.user,
-    company: company.id
+    recruiter: recruiter.id
   });
 
   const status = await CandidateStatus.findOneAndUpdate(
     {
       candidate: profile.user,
-      company: company.id
+      recruiter: recruiter.id
     },
     {
       $set: {
@@ -281,14 +281,14 @@ export const updateCandidateStatus = async (req, res) => {
   );
 
   if (previousStatus?.status !== "Hired" && req.body.status === "Hired") {
-    await Company.findByIdAndUpdate(company.id, { $inc: { hiredCandidateCount: 1 } });
+    await Recruiter.findByIdAndUpdate(recruiter.id, { $inc: { hiredCandidateCount: 1 } });
   }
 
   res.status(200).json({
     status: {
       id: status.id,
       candidate: status.candidate,
-      company: status.company,
+      recruiter: status.recruiter,
       status: status.status,
       updatedBy: status.updatedBy,
       updatedAt: status.updatedAt
