@@ -73,6 +73,35 @@ Actions -> Deploy laptop -> Run workflow
 
 New resume uploads will go to Cloudflare R2. Existing locally uploaded resumes stay in the Docker volume until you migrate them.
 
-## 6. Migration Later
+## 6. Optional MongoDB Backups
+
+You can also store MongoDB backup archives in the same R2 bucket.
+
+Add GitHub Actions variables:
+
+```text
+BACKUP_STORAGE_DRIVER=r2
+BACKUP_R2_PREFIX=backups/mongodb
+```
+
+The laptop backup script will upload each MongoDB archive to:
+
+```text
+backups/mongodb/
+```
+
+Pull the latest backup to your Mac:
+
+```bash
+./deploy/scripts/pull-latest-mongodb-backup.sh
+```
+
+Then restore locally:
+
+```bash
+./deploy/scripts/restore-mongodb.sh ./backups/mongodb/latest.archive.gz
+```
+
+## 7. Migration Later
 
 The current code supports both old local resume records and new R2 resume records. You can migrate old local files later without blocking deployment.

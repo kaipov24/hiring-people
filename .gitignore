@@ -26,6 +26,11 @@ secrets/*
 # Runtime uploads and logs
 api/uploads/*
 !api/uploads/.gitkeep
+backups/
+*.archive
+*.archive.gz
+*.dump
+*.bson
 *.log
 npm-debug.log*
 yarn-debug.log*

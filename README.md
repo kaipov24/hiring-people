@@ -172,4 +172,3 @@ Actions -> Deploy laptop -> Run workflow
 ## Notes
 
 This is a non-profit project. It is designed to support fairer and more accessible hiring.
-

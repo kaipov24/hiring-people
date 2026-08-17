@@ -39,7 +39,7 @@ jobs:
           mkdir -p "$DEPLOY_DIR"
           mkdir -p "$DEPLOY_DIR/secrets"
           cp -R deploy/. "$DEPLOY_DIR/"
-          chmod +x "$DEPLOY_DIR/scripts/check-env.sh"
+          chmod +x "$DEPLOY_DIR"/scripts/*.sh
 
       - name: Write runtime environment
         run: |
@@ -68,6 +68,8 @@ jobs:
           R2_REGION=${{ vars.R2_REGION || 'auto' }}
           R2_ACCESS_KEY_ID=${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY=${{ secrets.R2_SECRET_ACCESS_KEY }}
+          BACKUP_STORAGE_DRIVER=${{ vars.BACKUP_STORAGE_DRIVER || 'local' }}
+          BACKUP_R2_PREFIX=${{ vars.BACKUP_R2_PREFIX || 'backups/mongodb' }}
           EOF
 
           printf '%s' '${{ secrets.MONGODB_PASSWORD }}' > "$DEPLOY_DIR/secrets/mongodb_password"

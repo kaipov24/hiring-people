@@ -62,6 +62,13 @@ if [ "${STORAGE_DRIVER:-local}" = "r2" ]; then
   require_env R2_SECRET_ACCESS_KEY
 fi
 
+if [ "${BACKUP_STORAGE_DRIVER:-local}" = "r2" ]; then
+  require_env R2_ENDPOINT
+  require_env R2_BUCKET
+  require_env R2_ACCESS_KEY_ID
+  require_env R2_SECRET_ACCESS_KEY
+fi
+
 if [ "$require_tunnel" = "true" ]; then
   require_env CLOUDFLARE_TUNNEL_TOKEN
 fi

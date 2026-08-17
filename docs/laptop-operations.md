@@ -29,6 +29,29 @@ To keep more days:
 BACKUP_KEEP_DAYS=30 ./scripts/backup-mongodb.sh
 ```
 
+If `BACKUP_STORAGE_DRIVER=r2`, the same script also uploads the archive to Cloudflare R2 under:
+
+```text
+backups/mongodb/
+```
+
+Use these GitHub Actions variables to enable R2 backup upload on the laptop:
+
+```text
+BACKUP_STORAGE_DRIVER=r2
+BACKUP_R2_PREFIX=backups/mongodb
+```
+
+The script reuses the existing R2 values:
+
+```text
+R2_ENDPOINT
+R2_BUCKET
+R2_REGION
+R2_ACCESS_KEY_ID
+R2_SECRET_ACCESS_KEY
+```
+
 ## Daily Backup Cron
 
 Open crontab:
@@ -61,6 +84,32 @@ cd /opt/inclusive-hire
 ```
 
 Restore uses `--drop`, so it replaces existing collections in the `inclusive_hire` database.
+
+## Pull Latest Backup To Mac
+
+Use this when you start working locally and want your Mac database to match the latest laptop backup.
+
+First, make sure your local `.env` has the R2 values:
+
+```env
+R2_ENDPOINT=https://ACCOUNT_ID.r2.cloudflarestorage.com
+R2_BUCKET=inclusive-hire-resumes
+R2_REGION=auto
+R2_ACCESS_KEY_ID=your-access-key-id
+R2_SECRET_ACCESS_KEY=your-secret-access-key
+BACKUP_R2_PREFIX=backups/mongodb
+```
+
+Then run on the Mac:
+
+```bash
+cd /Users/kayratkaipov/Desktop/test-apps/devops/hiring-people
+./deploy/scripts/pull-latest-mongodb-backup.sh
+docker compose up -d mongodb
+./deploy/scripts/restore-mongodb.sh ./backups/mongodb/latest.archive.gz
+```
+
+This is one-way sync from R2 backup to your Mac. Restore uses `--drop`, so it replaces your local MongoDB data.
 
 ## Health Checks
 
