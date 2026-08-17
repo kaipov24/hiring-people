@@ -1,6 +1,13 @@
 #!/usr/bin/env sh
 set -eu
 
+if [ -f .env ]; then
+  set -a
+  # shellcheck disable=SC1091
+  . ./.env
+  set +a
+fi
+
 backup_dir="${BACKUP_DIR:-./backups/mongodb}"
 keep_days="${BACKUP_KEEP_DAYS:-7}"
 timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
