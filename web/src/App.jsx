@@ -671,27 +671,31 @@ function App() {
   const downloadCandidateCv = async (profile) => {
     if (!profile?.cv?.originalName) return;
 
-    const response = await fetch(`${API_BASE_URL}/api/candidates/${profile.id}/cv`, {
-      headers: authHeaders(token)
-    });
-    if (!response.ok) {
-      if (response.status === 401 || response.status === 403) {
-        handleAuthExpired({ status: response.status });
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/candidates/${profile.id}/cv`, {
+        headers: authHeaders(token)
+      });
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          handleAuthExpired({ status: response.status });
+          return;
+        }
+        setFormNotice("Не удалось скачать резюме.");
         return;
       }
-      setFormNotice("Не удалось скачать резюме.");
-      return;
-    }
 
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = profile.cv.originalName;
-    document.body.append(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = profile.cv.originalName;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      setFormNotice("Не удалось скачать резюме.");
+    }
   };
 
   const loadProfileViews = async () => {
@@ -933,6 +937,7 @@ function App() {
             selectedProfile={selectedProfile}
             setSelectedProfile={setSelectedProfile}
             openEmployeeProfile={openEmployeeProfile}
+            downloadCandidateCv={downloadCandidateCv}
             setPage={setPage}
             returnPage="candidates"
             canManageCandidates={false}
@@ -1455,7 +1460,66 @@ function RecruiterContacts({ recruiter, compact = false }) {
   );
 }
 
+const profileSnapshot = ({ user, accountForm, profileForm, candidateProfile }) => ({
+  name: accountForm.name.trim(),
+  savedName: (user?.name ?? "").trim(),
+  headline: profileForm.headline.trim(),
+  savedHeadline: (candidateProfile?.headline ?? "").trim(),
+  summary: profileForm.summary.trim(),
+  savedSummary: (candidateProfile?.summary ?? "").trim(),
+  skills: toList(profileForm.skills),
+  savedSkills: candidateProfile?.skills ?? [],
+  languages: toList(profileForm.languages),
+  savedLanguages: candidateProfile?.languages ?? [],
+  accessibilityPreferences: profileForm.accessibilityPreferences.trim(),
+  savedAccessibilityPreferences: (candidateProfile?.accessibilityPreferences ?? "").trim(),
+  location: profileForm.location.trim(),
+  savedLocation: (candidateProfile?.location ?? "").trim(),
+  portfolio: profileForm.portfolio.trim(),
+  savedPortfolio: (candidateProfile?.portfolio ?? "").trim(),
+  availability: profileForm.availability.trim(),
+  savedAvailability: (candidateProfile?.availability ?? "Готов(а) к предложениям").trim(),
+  contactEmail: profileForm.contactEmail.trim(),
+  savedContactEmail: (candidateProfile?.contacts?.email ?? user?.email ?? "").trim(),
+  messengerType: profileForm.messengerType,
+  savedMessengerType: candidateProfile?.contacts?.messengerType ?? "telegram",
+  messenger: profileForm.messenger.trim(),
+  savedMessenger: (candidateProfile?.contacts?.messenger ?? "").trim()
+});
+
 function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfileForm, profileLists, candidateProfile, saveProfile, uploadCv, profileViews, profileViewsLoaded, profileViewsLoading, loadProfileViews, downloadCandidateCv, notice }) {
+  const snapshot = profileSnapshot({ user, accountForm, profileForm, candidateProfile });
+  const currentProfileState = {
+    name: snapshot.name,
+    headline: snapshot.headline,
+    summary: snapshot.summary,
+    skills: snapshot.skills,
+    languages: snapshot.languages,
+    accessibilityPreferences: snapshot.accessibilityPreferences,
+    location: snapshot.location,
+    portfolio: snapshot.portfolio,
+    availability: snapshot.availability,
+    contactEmail: snapshot.contactEmail,
+    messengerType: snapshot.messengerType,
+    messenger: snapshot.messenger
+  };
+  const savedProfileState = {
+    name: snapshot.savedName,
+    headline: snapshot.savedHeadline,
+    summary: snapshot.savedSummary,
+    skills: snapshot.savedSkills,
+    languages: snapshot.savedLanguages,
+    accessibilityPreferences: snapshot.savedAccessibilityPreferences,
+    location: snapshot.savedLocation,
+    portfolio: snapshot.savedPortfolio,
+    availability: snapshot.savedAvailability,
+    contactEmail: snapshot.savedContactEmail,
+    messengerType: snapshot.savedMessengerType,
+    messenger: snapshot.savedMessenger
+  };
+  const profileChanged = JSON.stringify(currentProfileState) !== JSON.stringify(savedProfileState);
+  const profileSaved = notice === "Профиль сохранен." && !profileChanged;
+  const topNotice = notice && notice !== "Профиль сохранен." ? notice : "";
   const preview = {
     user,
     ...candidateProfile,
@@ -1483,7 +1547,7 @@ function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfil
         </div>
         <span className="profile-state">{profileForm.availability}</span>
       </div>
-      {notice && <p className="inline-notice" role="status">{notice}</p>}
+      {topNotice && <p className="inline-notice" role="status">{topNotice}</p>}
       <div className="profile-grid">
         <form className="profile-editor" onSubmit={saveProfile}>
           <section className="edit-card">
@@ -1515,7 +1579,10 @@ function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfil
             <TextField id="accessibility" label="Условия доступности" value={profileForm.accessibilityPreferences} onChange={(value) => setProfileForm({ ...profileForm, accessibilityPreferences: value })} rows="4" />
             <Field id="availability" label="Статус поиска" value={profileForm.availability} onChange={(value) => setProfileForm({ ...profileForm, availability: value })} />
           </section>
-          <button className="button primary wide" type="submit">Сохранить профиль</button>
+          <div className="profile-save-block">
+            <button className="button primary wide" type="submit" disabled={!profileChanged}>Сохранить профиль</button>
+            {profileSaved && <p className="save-status" role="status">Профиль сохранен.</p>}
+          </div>
         </form>
         <aside className="profile-side">
           <ProfileSummary profile={preview} detailed />
@@ -1756,12 +1823,36 @@ function AuthModal({ authForm, authMode, authError, authNotice, verificationToke
 }
 
 function PasswordField({ id, label, value, onChange, showPassword, setShowPassword, ...props }) {
+  const handleInvalid = (event) => {
+    if (props.required && !event.currentTarget.value) {
+      event.currentTarget.setCustomValidity("Заполните это поле");
+      return;
+    }
+
+    event.currentTarget.setCustomValidity("Проверьте правильность заполнения");
+  };
+
+  const handleInput = (event) => {
+    event.currentTarget.setCustomValidity("");
+  };
+
   return (
     <div className="password-field">
-      <Field id={id} label={label} type={showPassword ? "text" : "password"} value={value} onChange={onChange} {...props} />
-      <button className="button quiet password-toggle" type="button" onClick={() => setShowPassword(!showPassword)}>
-        {showPassword ? "Скрыть" : "Показать"}
-      </button>
+      <label htmlFor={id}>{label}</label>
+      <div className="password-input-wrap">
+        <input
+          id={id}
+          type={showPassword ? "text" : "password"}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          onInput={handleInput}
+          onInvalid={handleInvalid}
+          {...props}
+        />
+        <button className="button quiet password-toggle" type="button" onClick={() => setShowPassword(!showPassword)}>
+          {showPassword ? "Скрыть" : "Показать"}
+        </button>
+      </div>
     </div>
   );
 }

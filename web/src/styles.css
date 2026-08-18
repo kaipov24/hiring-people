@@ -827,6 +827,18 @@ main {
   gap: 1rem;
 }
 
+.profile-save-block {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.save-status {
+  color: #245d57;
+  font-weight: 850;
+  margin: 0;
+  text-align: center;
+}
+
 .edit-card,
 .profile-card,
 .recruiter-card {
@@ -1246,19 +1258,34 @@ main {
 }
 
 .password-field {
+  display: grid;
+  gap: 0.38rem;
+  margin-bottom: 1rem;
+}
+
+.password-field label,
+.password-field input {
+  margin-bottom: 0;
+}
+
+.password-input-wrap {
   position: relative;
 }
 
-.password-field input {
+.password-input-wrap input {
   padding-right: 6.4rem;
 }
 
 .password-toggle {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
   min-height: 34px;
   padding: 0.35rem 0.65rem;
   position: absolute;
   right: 0.42rem;
-  top: 1.95rem;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .link-button {
