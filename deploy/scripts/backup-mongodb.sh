@@ -13,6 +13,7 @@ keep_days="${BACKUP_KEEP_DAYS:-7}"
 timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
 archive_path="${backup_dir}/inclusive-hire-mongodb-${timestamp}.archive.gz"
 r2_prefix="${BACKUP_R2_PREFIX:-backups/mongodb}"
+aws_cli_image="${AWS_CLI_IMAGE:-public.ecr.aws/aws-cli/aws-cli:latest}"
 
 mkdir -p "$backup_dir"
 
@@ -49,7 +50,7 @@ if [ "${BACKUP_STORAGE_DRIVER:-local}" = "r2" ]; then
     -e AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY" \
     -e AWS_DEFAULT_REGION="${R2_REGION:-auto}" \
     -v "${backup_abs_dir}:/backup:ro" \
-    public.ecr.aws/aws-cli/aws-cli:latest \
+    "$aws_cli_image" \
     --endpoint-url "$R2_ENDPOINT" \
     s3 cp "/backup/${archive_name}" "s3://${R2_BUCKET}/${object_key}"
 

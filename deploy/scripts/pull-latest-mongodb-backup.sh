@@ -4,6 +4,7 @@ set -eu
 backup_dir="${BACKUP_DIR:-./backups/mongodb}"
 r2_prefix="${BACKUP_R2_PREFIX:-backups/mongodb}"
 output_path="${1:-${backup_dir}/latest.archive.gz}"
+aws_cli_image="${AWS_CLI_IMAGE:-public.ecr.aws/aws-cli/aws-cli:latest}"
 
 if [ -f .env ]; then
   set -a
@@ -28,7 +29,7 @@ latest_key="$(
     -e AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID" \
     -e AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY" \
     -e AWS_DEFAULT_REGION="${R2_REGION:-auto}" \
-    public.ecr.aws/aws-cli/aws-cli:latest \
+    "$aws_cli_image" \
     --endpoint-url "$R2_ENDPOINT" \
     s3api list-objects-v2 \
     --bucket "$R2_BUCKET" \
@@ -47,7 +48,7 @@ docker run --rm \
   -e AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY" \
   -e AWS_DEFAULT_REGION="${R2_REGION:-auto}" \
   -v "${output_abs_dir}:/backup" \
-  public.ecr.aws/aws-cli/aws-cli:latest \
+  "$aws_cli_image" \
   --endpoint-url "$R2_ENDPOINT" \
   s3 cp "s3://${R2_BUCKET}/${latest_key}" "/backup/${output_name}"
 
