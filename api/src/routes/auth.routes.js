@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 
-import { forgotPassword, login, me, register, resendVerification, resetPassword, updateMe, verifyEmail } from "../controllers/auth.controller.js";
+import { deleteMe, forgotPassword, login, me, register, resendVerification, resetPassword, updateMe, verifyEmail } from "../controllers/auth.controller.js";
 import { authenticate } from "../middleware/auth.middleware.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { validateBody } from "../utils/validation.js";
@@ -49,5 +49,6 @@ router.post("/forgot-password", validateBody(emailSchema), asyncHandler(forgotPa
 router.post("/reset-password", validateBody(resetPasswordSchema), asyncHandler(resetPassword));
 router.get("/me", authenticate, asyncHandler(me));
 router.patch("/me", authenticate, validateBody(updateMeSchema), asyncHandler(updateMe));
+router.delete("/me", authenticate, asyncHandler(deleteMe));
 
 export default router;

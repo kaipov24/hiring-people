@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { isConfiguredAdmin } from "../config/admin.js";
 import { sendPasswordResetEmail, sendVerificationEmail } from "../config/email.js";
 import { User } from "../models/user.model.js";
+import { deleteUserAndRelatedData } from "../services/user-cleanup.service.js";
 import { signAccessToken } from "../utils/jwt.js";
 import { createEmailVerificationToken, createPasswordResetToken } from "../utils/tokens.js";
 
@@ -49,7 +50,7 @@ export const login = async (req, res) => {
   const user = await User.findOne({ email });
 
   if (!user) {
-    const error = new Error("Неверный email или пароль");
+    const error = new Error("Аккаунт с таким email не найден");
     error.status = 401;
     throw error;
   }
@@ -195,5 +196,13 @@ export const updateMe = async (req, res) => {
 
   res.status(200).json({
     user: publicUser(user)
+  });
+};
+
+export const deleteMe = async (req, res) => {
+  await deleteUserAndRelatedData(req.user.id);
+
+  res.status(200).json({
+    message: "Аккаунт удален."
   });
 };

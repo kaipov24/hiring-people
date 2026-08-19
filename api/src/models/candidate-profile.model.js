@@ -44,6 +44,12 @@ const candidateProfileSchema = new mongoose.Schema(
       trim: true,
       maxlength: 120
     },
+    employmentFormat: {
+      type: String,
+      enum: ["remote", "office", "hybrid"],
+      default: "remote",
+      index: true
+    },
     location: {
       type: String,
       trim: true,
@@ -91,7 +97,8 @@ candidateProfileSchema.index({
   summary: "text",
   skills: "text",
   languages: "text",
-  availability: "text"
+  availability: "text",
+  employmentFormat: "text"
 });
 
 export const CandidateProfile = mongoose.model("CandidateProfile", candidateProfileSchema);

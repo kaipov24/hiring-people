@@ -8,6 +8,29 @@ export const contactInfo = (profile) => ({
   messenger: profile?.contacts?.messenger || "@inclusive_hire"
 });
 
+export const externalUrl = (value) => {
+  const url = String(value ?? "").trim();
+  if (!url) return "";
+  if (/^https?:\/\//i.test(url)) return url;
+  return `https://${url}`;
+};
+
+const digitsOnly = (value) => String(value ?? "").replace(/[^\d]/g, "");
+
+export const messengerUrl = ({ messengerType, messenger }) => {
+  const value = String(messenger ?? "").trim();
+  if (!value) return "";
+  if (/^https?:\/\//i.test(value)) return value;
+
+  if (messengerType === "whatsapp") {
+    const phone = digitsOnly(value);
+    return phone ? `https://wa.me/${phone}` : "";
+  }
+
+  const username = value.replace(/^@/, "");
+  return username ? `https://t.me/${encodeURIComponent(username)}` : "";
+};
+
 export const authUrl = (mode, role = "candidate") => `${APP_BASE_URL}/#${mode}?role=${role}`;
 
 export const readStoredSession = () => {

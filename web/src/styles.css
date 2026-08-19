@@ -559,6 +559,14 @@ main {
   font-weight: 950;
 }
 
+.meta-list a,
+.profile-location a {
+  color: #245d57;
+  font-weight: 900;
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+}
+
 .tag-list {
   align-content: flex-start;
   align-items: flex-start;
@@ -867,6 +875,15 @@ main {
 .profile-side .edit-card h3,
 .resume-upload-card .hint {
   margin: 0;
+}
+
+.danger-zone {
+  border-color: #e6c0b5;
+  background: #fffaf7;
+}
+
+.danger-zone h3 {
+  color: #8f2f20;
 }
 
 .resume-file-name {
@@ -1252,6 +1269,25 @@ main {
 
 .modal .card-heading-row {
   padding-right: 2.25rem;
+}
+
+.modal .inline-notice {
+  margin: 0.75rem 0 1rem;
+}
+
+.confirm-modal {
+  display: grid;
+  gap: 1rem;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.confirm-actions .button {
+  min-width: 10rem;
 }
 
 .icon-close {

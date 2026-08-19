@@ -1,16 +1,18 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 import { authHeaders, request } from "./api.js";
-import { authUrl, contactInfo, readAuthLink, readCandidateRoute, readRecruiterRoute, readStoredSession, readVisitorId, toList } from "./browser.js";
+import { authUrl, contactInfo, externalUrl, messengerUrl, readAuthLink, readCandidateRoute, readRecruiterRoute, readStoredSession, readVisitorId, toList } from "./browser.js";
 import {
   API_BASE_URL,
   APP_BASE_URL,
+  availabilityOptions,
   emptyAccountForm,
   emptyAuthForm,
   emptyFilters,
   emptyProfileForm,
   emptyRecruiterForm,
   emptyResetForm,
+  employmentFormatLabels,
   IS_LANDING,
   roleLabels,
   sampleCandidates,
@@ -30,6 +32,8 @@ function App() {
   const [authForm, setAuthForm] = useState(emptyAuthForm);
   const [authError, setAuthError] = useState("");
   const [authNotice, setAuthNotice] = useState("");
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
+  const [deleteAccountLoading, setDeleteAccountLoading] = useState(false);
   const [verificationToken, setVerificationToken] = useState("");
   const [resetForm, setResetForm] = useState(emptyResetForm);
   const [formNotice, setFormNotice] = useState("");
@@ -198,6 +202,7 @@ function App() {
           location: profile.location ?? "",
           portfolio: profile.portfolio ?? "",
           availability: profile.availability ?? "Готов(а) к предложениям",
+          employmentFormat: profile.employmentFormat ?? "remote",
           contactEmail: profile.contacts?.email ?? user.email ?? "",
           messengerType: profile.contacts?.messengerType ?? "telegram",
           messenger: profile.contacts?.messenger ?? ""
@@ -405,6 +410,27 @@ function App() {
     setPage("home");
   };
 
+  const deleteOwnAccount = async () => {
+    setFormNotice("");
+    setDeleteAccountLoading(true);
+    try {
+      await request("/api/auth/me", {
+        method: "DELETE",
+        headers: authHeaders(token)
+      });
+      setDeleteAccountOpen(false);
+      setSession(null);
+      clearPrivateState();
+      setPage("home");
+      setFormNotice("Аккаунт удален.");
+    } catch (error) {
+      if (handleAuthExpired(error)) return;
+      setFormNotice(error.message);
+    } finally {
+      setDeleteAccountLoading(false);
+    }
+  };
+
   const saveProfile = async (event) => {
     event.preventDefault();
     setFormNotice("");
@@ -423,6 +449,7 @@ function App() {
             ...profileForm,
             skills: profileLists.skills,
             languages: profileLists.languages,
+            employmentFormat: profileForm.employmentFormat,
             contacts: {
               email: profileForm.contactEmail || undefined,
               messengerType: profileForm.messengerType,
@@ -815,6 +842,7 @@ function App() {
             profileViewsLoading={profileViewsLoading}
             loadProfileViews={loadProfileViews}
             downloadCandidateCv={downloadCandidateCv}
+            openDeleteAccount={() => setDeleteAccountOpen(true)}
             notice={formNotice}
           />
         )}
@@ -873,6 +901,13 @@ function App() {
           verifyEmail={verifyEmail}
           requestPasswordReset={requestPasswordReset}
           resetPassword={resetPassword}
+        />
+      )}
+      {!IS_LANDING && deleteAccountOpen && (
+        <DeleteAccountModal
+          loading={deleteAccountLoading}
+          onCancel={() => setDeleteAccountOpen(false)}
+          onConfirm={deleteOwnAccount}
         />
       )}
     </div>
@@ -1206,6 +1241,15 @@ function DirectoryPage({ page, filters, setFilters, loadEmployees, employees, se
           <h3>Фильтры</h3>
           <Field id="query" label="Поиск по навыкам" value={filters.query} onChange={(value) => setFilters({ ...filters, query: value, skills: value })} placeholder="Frontend, React" />
           <Field id="location" label="Локация" value={filters.location} onChange={(value) => setFilters({ ...filters, location: value })} placeholder="Бишкек, Ош, удаленно" />
+          <div>
+            <label htmlFor="filterEmploymentFormat">Формат работы</label>
+            <select id="filterEmploymentFormat" value={filters.employmentFormat} onChange={(event) => setFilters({ ...filters, employmentFormat: event.target.value })}>
+              <option value="">Любой</option>
+              {Object.entries(employmentFormatLabels).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </div>
           <Field id="skills" label="Навыки" value={filters.skills} onChange={(value) => setFilters({ ...filters, skills: value, query: value })} placeholder="SQL, QA, Node.js" />
           <Field id="languages" label="Языки" value={filters.languages} onChange={(value) => setFilters({ ...filters, languages: value })} placeholder="русский, кыргызча" />
           <div className="filters-actions">
@@ -1404,6 +1448,8 @@ const profileSnapshot = ({ user, accountForm, profileForm, candidateProfile }) =
   savedPortfolio: (candidateProfile?.portfolio ?? "").trim(),
   availability: profileForm.availability.trim(),
   savedAvailability: (candidateProfile?.availability ?? "Готов(а) к предложениям").trim(),
+  employmentFormat: profileForm.employmentFormat,
+  savedEmploymentFormat: candidateProfile?.employmentFormat ?? "remote",
   contactEmail: profileForm.contactEmail.trim(),
   savedContactEmail: (candidateProfile?.contacts?.email ?? user?.email ?? "").trim(),
   messengerType: profileForm.messengerType,
@@ -1412,7 +1458,7 @@ const profileSnapshot = ({ user, accountForm, profileForm, candidateProfile }) =
   savedMessenger: (candidateProfile?.contacts?.messenger ?? "").trim()
 });
 
-function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfileForm, profileLists, candidateProfile, saveProfile, uploadCv, profileViews, profileViewsLoaded, profileViewsLoading, loadProfileViews, downloadCandidateCv, notice }) {
+function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfileForm, profileLists, candidateProfile, saveProfile, uploadCv, profileViews, profileViewsLoaded, profileViewsLoading, loadProfileViews, downloadCandidateCv, openDeleteAccount, notice }) {
   const snapshot = profileSnapshot({ user, accountForm, profileForm, candidateProfile });
   const currentProfileState = {
     name: snapshot.name,
@@ -1424,6 +1470,7 @@ function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfil
     location: snapshot.location,
     portfolio: snapshot.portfolio,
     availability: snapshot.availability,
+    employmentFormat: snapshot.employmentFormat,
     contactEmail: snapshot.contactEmail,
     messengerType: snapshot.messengerType,
     messenger: snapshot.messenger
@@ -1438,6 +1485,7 @@ function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfil
     location: snapshot.savedLocation,
     portfolio: snapshot.savedPortfolio,
     availability: snapshot.savedAvailability,
+    employmentFormat: snapshot.savedEmploymentFormat,
     contactEmail: snapshot.savedContactEmail,
     messengerType: snapshot.savedMessengerType,
     messenger: snapshot.savedMessenger
@@ -1455,6 +1503,8 @@ function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfil
     summary: profileForm.summary,
     accessibilityPreferences: profileForm.accessibilityPreferences,
     portfolio: profileForm.portfolio,
+    availability: profileForm.availability,
+    employmentFormat: profileForm.employmentFormat,
     contacts: {
       email: profileForm.contactEmail || user.email,
       messengerType: profileForm.messengerType,
@@ -1486,7 +1536,17 @@ function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfil
             <TextField id="summary" label="Опыт и сильные стороны" value={profileForm.summary} onChange={(value) => setProfileForm({ ...profileForm, summary: value })} rows="5" />
             <Field id="skills" label="Навыки через запятую" value={profileForm.skills} onChange={(value) => setProfileForm({ ...profileForm, skills: value })} />
             <Field id="languages" label="Языки через запятую" value={profileForm.languages} onChange={(value) => setProfileForm({ ...profileForm, languages: value })} />
-            <Field id="location" label="Город или формат работы" value={profileForm.location} onChange={(value) => setProfileForm({ ...profileForm, location: value })} />
+            <div className="field-pair">
+              <Field id="location" label="Город" value={profileForm.location} onChange={(value) => setProfileForm({ ...profileForm, location: value })} placeholder="Бишкек, Ош, Нарын" />
+              <div>
+                <label htmlFor="employmentFormat">Формат работы</label>
+                <select id="employmentFormat" value={profileForm.employmentFormat} onChange={(event) => setProfileForm({ ...profileForm, employmentFormat: event.target.value })}>
+                  {Object.entries(employmentFormatLabels).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
             <Field id="portfolio" label="Портфолио или ссылка на работы" value={profileForm.portfolio} onChange={(value) => setProfileForm({ ...profileForm, portfolio: value })} placeholder="https://..." />
             <Field id="contactEmail" label="Email для связи" type="email" value={profileForm.contactEmail} onChange={(value) => setProfileForm({ ...profileForm, contactEmail: value })} />
             <div className="field-pair">
@@ -1502,7 +1562,14 @@ function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfil
               </div>
             </div>
             <TextField id="accessibility" label="Условия доступности" value={profileForm.accessibilityPreferences} onChange={(value) => setProfileForm({ ...profileForm, accessibilityPreferences: value })} rows="4" />
-            <Field id="availability" label="Статус поиска" value={profileForm.availability} onChange={(value) => setProfileForm({ ...profileForm, availability: value })} />
+            <div>
+              <label htmlFor="availability">Статус поиска</label>
+              <select id="availability" value={profileForm.availability} onChange={(event) => setProfileForm({ ...profileForm, availability: event.target.value })}>
+                {availabilityOptions.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+            </div>
           </section>
           <div className="profile-save-block">
             <button className="button primary wide" type="submit" disabled={!profileChanged}>Сохранить профиль</button>
@@ -1553,6 +1620,11 @@ function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfil
               </ul>
             )}
           </section>
+          <section className="edit-card danger-zone">
+            <h3>Удаление аккаунта</h3>
+            <p className="hint">Будут удалены аккаунт, профиль, резюме и связанные данные. Это действие нельзя отменить.</p>
+            <button className="button danger full" type="button" onClick={openDeleteAccount}>Удалить аккаунт</button>
+          </section>
         </aside>
       </div>
     </section>
@@ -1563,6 +1635,7 @@ function CandidateCard({ candidate, onClick, preview = false }) {
   const name = candidate.user?.name ?? candidate.name ?? "Кандидат";
   const initials = name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
   const contacts = contactInfo(candidate);
+  const portfolioUrl = externalUrl(candidate.portfolio);
   const body = (
     <>
       <div className="logo-mark">{initials}</div>
@@ -1575,8 +1648,17 @@ function CandidateCard({ candidate, onClick, preview = false }) {
         </div>
         <ul className="meta-list">
           <li>{candidate.location || "Локация не указана"}</li>
+          <li>Формат: {employmentFormatLabels[candidate.employmentFormat] ?? "Онлайн"}</li>
           <li>Навыки: {(candidate.skills ?? []).slice(0, 3).join(", ") || "не указаны"}</li>
           <li>Языки: {(candidate.languages ?? []).join(", ") || "не указаны"}</li>
+          {portfolioUrl && (
+            <li>
+              Портфолио:{" "}
+              <a href={portfolioUrl} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
+                открыть
+              </a>
+            </li>
+          )}
           {!preview && <li>{contacts.email}</li>}
         </ul>
         <TagList items={candidate.skills ?? []} />
@@ -1624,19 +1706,34 @@ function CandidateProfilePage({ profile, onBack, downloadCandidateCv, updateStat
 function ProfileSummary({ profile, detailed = false, onDownloadCv }) {
   const contacts = contactInfo(profile);
   const messengerLabel = contacts.messengerType === "whatsapp" ? "WhatsApp" : "Telegram";
+  const profilePortfolioUrl = externalUrl(profile?.portfolio);
+  const profileMessengerUrl = messengerUrl(contacts);
   return (
     <section className={detailed ? "profile-card detailed" : "profile-card"}>
       <div className="profile-avatar">{(profile?.user?.name ?? "П").slice(0, 1)}</div>
       <h3>{profile?.headline || "Профиль соискателя"}</h3>
       {profile?.location && <p className="profile-location">{profile.location}</p>}
+      {profile?.employmentFormat && <p className="profile-location">Формат работы: {employmentFormatLabels[profile.employmentFormat] ?? "Онлайн"}</p>}
+      {profile?.availability && <p className="profile-location">Статус: {profile.availability}</p>}
       {detailed && profile?.summary && <p className="profile-summary-text">{profile.summary}</p>}
-      {detailed && profile?.portfolio && <p className="profile-location">{profile.portfolio}</p>}
+      {detailed && profilePortfolioUrl && (
+        <p className="profile-location">
+          <a href={profilePortfolioUrl} target="_blank" rel="noreferrer">Портфолио</a>
+        </p>
+      )}
       {detailed && (
         <>
           <h4>Контакты</h4>
           <ul className="contact-list">
             <li><span>Email</span><a href={`mailto:${contacts.email}`}>{contacts.email}</a></li>
-            <li><span>{messengerLabel}</span><strong>{contacts.messenger}</strong></li>
+            <li>
+              <span>{messengerLabel}</span>
+              {profileMessengerUrl ? (
+                <a href={profileMessengerUrl} target="_blank" rel="noreferrer">{contacts.messenger}</a>
+              ) : (
+                <strong>{contacts.messenger}</strong>
+              )}
+            </li>
           </ul>
         </>
       )}
@@ -1657,6 +1754,28 @@ function ProfileSummary({ profile, detailed = false, onDownloadCv }) {
         </div>
       )}
     </section>
+  );
+}
+
+function DeleteAccountModal({ loading, onCancel, onConfirm }) {
+  return (
+    <div className="modal-backdrop">
+      <section className="modal confirm-modal" role="dialog" aria-modal="true" aria-labelledby="delete-account-title">
+        <div className="card-heading-row">
+          <h2 id="delete-account-title">Удалить аккаунт?</h2>
+          <button className="icon-close" type="button" aria-label="Закрыть" onClick={onCancel} disabled={loading}>×</button>
+        </div>
+        <p className="form-copy">
+          Будут удалены ваш аккаунт, профиль, резюме и связанные данные. Восстановить их после удаления нельзя.
+        </p>
+        <div className="confirm-actions">
+          <button className="button secondary" type="button" onClick={onCancel} disabled={loading}>Отмена</button>
+          <button className="button danger" type="button" onClick={onConfirm} disabled={loading}>
+            {loading ? "Удаляем..." : "Удалить аккаунт"}
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 

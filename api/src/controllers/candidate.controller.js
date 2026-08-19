@@ -25,6 +25,7 @@ const profilePayload = (profile) => ({
   accessibilityPreferences: profile.accessibilityPreferences,
   portfolio: profile.portfolio,
   availability: profile.availability,
+  employmentFormat: profile.employmentFormat || "remote",
   location: profile.location,
   contacts: {
     email: profile.contacts?.email || profile.user?.email,
@@ -50,11 +51,16 @@ const escapeRegex = (value) => {
 export const listCandidates = async (req, res) => {
   const filters = {};
   const location = String(req.query.location ?? "").trim();
+  const employmentFormat = String(req.query.employmentFormat ?? "").trim();
   const skills = splitQueryList(req.query.skills);
   const languages = splitQueryList(req.query.languages);
 
   if (location) {
     filters.location = { $regex: location, $options: "i" };
+  }
+
+  if (["remote", "office", "hybrid"].includes(employmentFormat)) {
+    filters.employmentFormat = employmentFormat;
   }
 
   if (skills.length > 0) {
@@ -126,6 +132,7 @@ export const upsertMyCandidateProfile = async (req, res) => {
         accessibilityPreferences: req.body.accessibilityPreferences,
         portfolio: req.body.portfolio,
         availability: req.body.availability,
+        employmentFormat: req.body.employmentFormat,
         location: req.body.location,
         contacts: req.body.contacts
       }

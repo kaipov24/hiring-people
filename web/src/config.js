@@ -22,6 +22,19 @@ export const statusLabels = {
 
 export const statuses = Object.keys(statusLabels);
 
+export const availabilityOptions = [
+  "Готов(а) к предложениям",
+  "Открыт(а) к проектной работе",
+  "Рассматриваю предложения",
+  "Не ищу работу сейчас"
+];
+
+export const employmentFormatLabels = {
+  remote: "Онлайн",
+  office: "Офлайн",
+  hybrid: "Гибрид"
+};
+
 export const roleLabels = {
   candidate: "Соискатель",
   hiring_manager: "Работодатель",
@@ -40,6 +53,7 @@ export const emptyProfileForm = {
   location: "",
   portfolio: "",
   availability: "Готов(а) к предложениям",
+  employmentFormat: "remote",
   contactEmail: "",
   messengerType: "telegram",
   messenger: ""
@@ -53,7 +67,7 @@ export const emptyRecruiterForm = {
   messenger: "",
   accessibilityCommitments: ""
 };
-export const emptyFilters = { query: "", location: "", skills: "", languages: "" };
+export const emptyFilters = { query: "", location: "", employmentFormat: "", skills: "", languages: "" };
 
 export const sampleCandidates = [
   {

@@ -1,11 +1,9 @@
 import { sendPasswordResetEmail, sendTestEmail, verifyEmailTransport } from "../config/email.js";
-import { deleteCvFile } from "../config/storage.js";
 import { ActivityEvent } from "../models/activity-event.model.js";
 import { CandidateProfile } from "../models/candidate-profile.model.js";
-import { CandidateStatus } from "../models/candidate-status.model.js";
-import { ProfileView } from "../models/profile-view.model.js";
 import { Recruiter } from "../models/recruiter.model.js";
 import { User } from "../models/user.model.js";
+import { deleteUserAndRelatedData } from "../services/user-cleanup.service.js";
 import { createPasswordResetToken } from "../utils/tokens.js";
 
 const testUserEmailPatterns = [
@@ -129,32 +127,7 @@ export const deleteUser = async (req, res) => {
     throw error;
   }
 
-  const candidateProfile = await CandidateProfile.findOne({ user: user.id });
-  await deleteCvFile(candidateProfile?.cv);
-
-  const recruiters = await Recruiter.find({ owner: user.id }).select("_id");
-  const recruiterIds = recruiters.map((recruiter) => recruiter.id);
-
-  await Promise.all([
-    CandidateProfile.deleteMany({ user: user.id }),
-    Recruiter.deleteMany({ owner: user.id }),
-    ProfileView.deleteMany({
-      $or: [
-        { candidate: user.id },
-        { viewedBy: user.id },
-        { recruiter: { $in: recruiterIds } }
-      ]
-    }),
-    CandidateStatus.deleteMany({
-      $or: [
-        { candidate: user.id },
-        { updatedBy: user.id },
-        { recruiter: { $in: recruiterIds } }
-      ]
-    }),
-    ActivityEvent.deleteMany({ user: user.id }),
-    User.deleteOne({ _id: user.id })
-  ]);
+  await deleteUserAndRelatedData(user.id);
 
   res.status(200).json({
     message: "Пользователь и связанные данные удалены."

@@ -26,6 +26,7 @@ const profileSchema = z.object({
   accessibilityPreferences: z.string().trim().max(2000).optional(),
   portfolio: z.string().trim().max(300).optional(),
   availability: z.string().trim().max(120).optional(),
+  employmentFormat: z.enum(["remote", "office", "hybrid"]).default("remote"),
   contacts: z.object({
     email: z.string().trim().email().max(160).optional(),
     messenger: z.string().trim().max(160).optional(),
