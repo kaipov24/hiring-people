@@ -11,7 +11,8 @@ const publicUser = (user) => ({
   email: user.email,
   name: user.name,
   role: isConfiguredAdmin(user.email) ? "admin" : user.role,
-  emailVerified: user.emailVerified !== false
+  emailVerified: user.emailVerified !== false,
+  disabled: Boolean(user.disabledAt)
 });
 
 export const register = async (req, res) => {
@@ -63,6 +64,12 @@ export const login = async (req, res) => {
 
   if (user.emailVerified === false) {
     const error = new Error("Подтвердите email перед входом");
+    error.status = 403;
+    throw error;
+  }
+
+  if (user.disabledAt) {
+    const error = new Error("Аккаунт отключен. Обратитесь к администратору.");
     error.status = 403;
     throw error;
   }

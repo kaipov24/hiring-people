@@ -241,6 +241,16 @@ textarea {
   background: #e9f1ec;
 }
 
+.button.danger {
+  background: #fff8f4;
+  border-color: #b95c47;
+  color: #8f2f20;
+}
+
+.button.danger:hover {
+  background: #fde9df;
+}
+
 .button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
@@ -1057,12 +1067,12 @@ main {
 
 .admin-table th:nth-child(1),
 .admin-table td:nth-child(1) {
-  width: 18%;
+  width: 16%;
 }
 
 .admin-table th:nth-child(2),
 .admin-table td:nth-child(2) {
-  width: 34%;
+  width: 26%;
 }
 
 .admin-table th:nth-child(3),
@@ -1072,7 +1082,7 @@ main {
 
 .admin-table th:nth-child(4),
 .admin-table td:nth-child(4) {
-  width: 12%;
+  width: 14%;
 }
 
 .admin-table th:nth-child(5),
@@ -1082,7 +1092,7 @@ main {
 
 .admin-table th:last-child,
 .admin-table td:last-child {
-  width: 14%;
+  width: 22%;
 }
 
 .admin-table tr:last-child td {
@@ -1104,11 +1114,17 @@ main {
   gap: 0.4rem;
 }
 
+.admin-status-cell {
+  display: grid;
+  gap: 0.4rem;
+}
+
 .admin-email-cell {
   overflow-wrap: anywhere;
 }
 
-.test-user-tag {
+.test-user-tag,
+.disabled-user-tag {
   background: #fff5df;
   border: 1px solid #e6c888;
   border-radius: 999px;
@@ -1119,6 +1135,12 @@ main {
   line-height: 1;
   padding: 0.38rem 0.55rem;
   width: fit-content;
+}
+
+.disabled-user-tag {
+  background: #fde9df;
+  border-color: #e6aa99;
+  color: #8f2f20;
 }
 
 .row-status {

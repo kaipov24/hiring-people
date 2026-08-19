@@ -1,219 +1,25 @@
 import React, { useEffect, useMemo, useState } from "react";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
-const PUBLIC_SITE_URL = (import.meta.env.VITE_PUBLIC_SITE_URL ?? window.location.origin).replace(/\/+$/, "");
-const DEPLOY_TARGET = import.meta.env.VITE_DEPLOY_TARGET ?? "app";
-const IS_LANDING = DEPLOY_TARGET === "landing";
-const APP_BASE_URL = (import.meta.env.VITE_APP_BASE_URL || PUBLIC_SITE_URL).replace(/\/+$/, "");
-const YEAR = new Date().getFullYear();
-const SESSION_STORAGE_KEY = "inclusive-hire-session";
-const VISITOR_STORAGE_KEY = "inclusive-hire-visitor";
-const publicSeo = {
-  title: "Найм людей с инвалидностью в Бишкеке | inclusive-hire",
-  description: "inclusive-hire Бишкек — некоммерческая платформа инклюзивного найма в Кыргызстане: работодатели могут нанять человека с инвалидностью, соискатели загружают резюме и показывают навыки.",
-  robots: "index,follow",
-  canonicalPath: "/"
-};
-
-const statusLabels = {
-  Viewed: "Просмотрен",
-  Contacted: "Связались",
-  Hired: "Нанят"
-};
-const statuses = Object.keys(statusLabels);
-
-const roleLabels = {
-  candidate: "Соискатель",
-  hiring_manager: "Работодатель",
-  admin: "Админ"
-};
-
-const emptyAuthForm = { name: "", email: "", password: "", role: "candidate" };
-const emptyResetForm = { email: "", token: "", password: "" };
-const emptyAccountForm = { name: "" };
-const emptyProfileForm = {
-  headline: "",
-  summary: "",
-  skills: "",
-  languages: "",
-  accessibilityPreferences: "",
-  location: "",
-  portfolio: "",
-  availability: "Готов(а) к предложениям",
-  contactEmail: "",
-  messengerType: "telegram",
-  messenger: ""
-};
-const emptyRecruiterForm = {
-  name: "",
-  description: "",
-  website: "",
-  contactEmail: "",
-  phone: "",
-  messenger: "",
-  accessibilityCommitments: ""
-};
-const emptyFilters = { query: "", location: "", skills: "", languages: "" };
-
-const sampleCandidates = [
-  {
-    name: "Айжан М.",
-    headline: "UX-исследователь доступных сервисов",
-    location: "Бишкек",
-    skills: ["исследования", "интервью", "аналитика"],
-    languages: ["кыргызча", "русский", "English"]
-  },
-  {
-    name: "Тимур К.",
-    headline: "Frontend-разработчик",
-    location: "Удаленно",
-    skills: ["React", "TypeScript", "доступность"],
-    languages: ["русский", "English"]
-  },
-  {
-    name: "Салтанат Р.",
-    headline: "HR-координатор инклюзивного найма",
-    location: "Ош",
-    skills: ["найм", "адаптация", "документы"],
-    languages: ["кыргызча", "русский"]
-  }
-];
-
-const toList = (value) => value.split(",").map((item) => item.trim()).filter(Boolean);
-const authHeaders = (token) => ({ Authorization: `Bearer ${token}` });
-const contactInfo = (profile) => ({
-  email: profile?.contacts?.email || profile?.user?.email || "contact@inclusive-hire.local",
-  messengerType: profile?.contacts?.messengerType || "telegram",
-  messenger: profile?.contacts?.messenger || "@inclusive_hire"
-});
-const authUrl = (mode, role = "candidate") => `${APP_BASE_URL}/#${mode}?role=${role}`;
-
-const request = async (path, options = {}) => {
-  const response = await fetch(`${API_BASE_URL}${path}`, options);
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const error = new Error(data.error?.message ?? "Запрос не выполнен");
-    error.status = response.status;
-    throw error;
-  }
-  return data;
-};
-
-const setMetaContent = (selector, content) => {
-  const element = document.head.querySelector(selector);
-  if (element) element.setAttribute("content", content);
-};
-
-const setCanonical = (url) => {
-  let canonical = document.head.querySelector("link[rel='canonical']");
-  if (!canonical) {
-    canonical = document.createElement("link");
-    canonical.setAttribute("rel", "canonical");
-    document.head.append(canonical);
-  }
-  canonical.setAttribute("href", url);
-};
-
-const setDocumentSeo = ({ title, description, robots, canonicalPath }) => {
-  const canonicalUrl = `${PUBLIC_SITE_URL}${canonicalPath}`;
-  document.title = title;
-  setMetaContent("meta[name='description']", description);
-  setMetaContent("meta[name='robots']", robots);
-  setMetaContent("meta[property='og:title']", title);
-  setMetaContent("meta[property='og:description']", description);
-  setMetaContent("meta[property='og:url']", canonicalUrl);
-  setMetaContent("meta[name='twitter:title']", title);
-  setMetaContent("meta[name='twitter:description']", description);
-  setCanonical(canonicalUrl);
-};
-
-const seoForAppState = ({ user, page, selectedProfile, selectedRecruiter }) => {
-  if (!user) return publicSeo;
-
-  if (selectedProfile) {
-    return {
-      title: `${selectedProfile.user?.name ?? "Профиль соискателя"} | inclusive-hire`,
-      description: "Полный профиль соискателя доступен зарегистрированным пользователям inclusive-hire.",
-      robots: "noindex,nofollow",
-      canonicalPath: "/"
-    };
-  }
-
-  if (selectedRecruiter) {
-    return {
-      title: `${selectedRecruiter.name ?? "Профиль рекрутера"} | inclusive-hire`,
-      description: "Профиль рекрутера доступен зарегистрированным пользователям inclusive-hire.",
-      robots: "noindex,nofollow",
-      canonicalPath: "/"
-    };
-  }
-
-  const privateTitles = {
-    adminActivity: "Администрирование активности | inclusive-hire",
-    adminUsers: "Администрирование пользователей | inclusive-hire",
-    candidates: "Профили соискателей | inclusive-hire",
-    recruiter: "Профиль рекрутера | inclusive-hire",
-    recruiters: "Рекрутеры | inclusive-hire",
-    directory: "Профили соискателей | inclusive-hire",
-    profile: "Мой профиль соискателя | inclusive-hire"
-  };
-
-  return {
-    title: privateTitles[page] ?? "inclusive-hire",
-    description: "Рабочий раздел inclusive-hire доступен после входа в аккаунт.",
-    robots: "noindex,nofollow",
-    canonicalPath: "/"
-  };
-};
-
-const readStoredSession = () => {
-  try {
-    const stored = window.localStorage.getItem(SESSION_STORAGE_KEY);
-    return stored ? JSON.parse(stored) : null;
-  } catch {
-    window.localStorage.removeItem(SESSION_STORAGE_KEY);
-    return null;
-  }
-};
-
-const readVisitorId = () => {
-  const existing = window.localStorage.getItem(VISITOR_STORAGE_KEY);
-  if (existing) return existing;
-
-  const id = window.crypto?.randomUUID?.() ?? `visitor-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  window.localStorage.setItem(VISITOR_STORAGE_KEY, id);
-  return id;
-};
-
-const readEntityRoute = (entity) => {
-  const pathMatch = window.location.pathname.match(new RegExp(`^/${entity}/([^/]+)$`));
-  if (pathMatch) return decodeURIComponent(pathMatch[1]);
-
-  const route = window.location.hash.slice(1).split("?")[0];
-  const hashMatch = route.match(new RegExp(`^${entity}/([^/]+)$`));
-  return hashMatch ? decodeURIComponent(hashMatch[1]) : "";
-};
-
-const readAuthLink = () => {
-  const hash = window.location.hash;
-  const [route, query = ""] = hash.slice(1).split("?");
-  const params = new URLSearchParams(query || window.location.search);
-  const token = params.get("token") ?? "";
-  const role = params.get("role") === "hiring_manager" ? "hiring_manager" : "candidate";
-
-  if (route === "reset-password" && token) return { mode: "reset", token };
-  if (route === "verify-email" && token) return { mode: "verify", token };
-  if (route === "login" || route === "register") return { mode: route, role };
-  return null;
-};
-
-const readCandidateRoute = () => {
-  return readEntityRoute("candidates");
-};
-
-const readRecruiterRoute = () => {
-  return readEntityRoute("recruiters");
-};
+import { authHeaders, request } from "./api.js";
+import { authUrl, contactInfo, readAuthLink, readCandidateRoute, readRecruiterRoute, readStoredSession, readVisitorId, toList } from "./browser.js";
+import {
+  API_BASE_URL,
+  APP_BASE_URL,
+  emptyAccountForm,
+  emptyAuthForm,
+  emptyFilters,
+  emptyProfileForm,
+  emptyRecruiterForm,
+  emptyResetForm,
+  IS_LANDING,
+  roleLabels,
+  sampleCandidates,
+  SESSION_STORAGE_KEY,
+  statusLabels,
+  statuses,
+  YEAR
+} from "./config.js";
+import { seoForAppState, setDocumentSeo } from "./seo.js";
 
 function App() {
   const [session, setSession] = useState(IS_LANDING ? null : readStoredSession);
@@ -244,7 +50,7 @@ function App() {
   const [adminUsers, setAdminUsers] = useState([]);
   const [adminActivity, setAdminActivity] = useState(null);
   const [adminNotice, setAdminNotice] = useState("");
-  const [adminResetState, setAdminResetState] = useState({});
+  const [adminActionState, setAdminActionState] = useState({});
 
   const user = session?.user;
   const token = session?.token;
@@ -495,7 +301,7 @@ function App() {
     setSelectedRecruiter(null);
     setAdminUsers([]);
     setAdminActivity(null);
-    setAdminResetState({});
+    setAdminActionState({});
   };
 
   const handleAuthExpired = (error) => {
@@ -808,7 +614,7 @@ function App() {
 
   const loadAdminUsers = async () => {
     setAdminNotice("");
-    setAdminResetState({});
+    setAdminActionState({});
     try {
       const data = await request("/api/admin/users", { headers: authHeaders(token) });
       setAdminUsers(data.users ?? []);
@@ -829,7 +635,7 @@ function App() {
 
   const sendAdminPasswordReset = async (userId) => {
     setAdminNotice("");
-    setAdminResetState((current) => ({
+    setAdminActionState((current) => ({
       ...current,
       [userId]: { status: "loading", message: "Отправляем ссылку..." }
     }));
@@ -838,14 +644,96 @@ function App() {
         method: "POST",
         headers: authHeaders(token)
       });
-      setAdminResetState((current) => ({
+      setAdminActionState((current) => ({
         ...current,
         [userId]: { status: "success", message: data.message ?? "Ссылка отправлена на email." }
       }));
     } catch (error) {
-      setAdminResetState((current) => ({
+      setAdminActionState((current) => ({
         ...current,
         [userId]: { status: "error", message: error.message }
+      }));
+    }
+  };
+
+  const updateAdminUser = (updatedUser) => {
+    setAdminUsers((current) => current.map((item) => (item.id === updatedUser.id ? updatedUser : item)));
+  };
+
+  const verifyAdminUserEmail = async (userId) => {
+    setAdminNotice("");
+    setAdminActionState((current) => ({
+      ...current,
+      [userId]: { status: "loading", message: "Подтверждаем email..." }
+    }));
+    try {
+      const data = await request(`/api/admin/users/${userId}/verify-email`, {
+        method: "POST",
+        headers: authHeaders(token)
+      });
+      updateAdminUser(data.user);
+      setAdminActionState((current) => ({
+        ...current,
+        [userId]: { status: "success", message: data.message ?? "Email подтвержден." }
+      }));
+    } catch (error) {
+      setAdminActionState((current) => ({
+        ...current,
+        [userId]: { status: "error", message: error.message }
+      }));
+    }
+  };
+
+  const toggleAdminUserDisabled = async (targetUser) => {
+    setAdminNotice("");
+    setAdminActionState((current) => ({
+      ...current,
+      [targetUser.id]: { status: "loading", message: targetUser.disabled ? "Включаем аккаунт..." : "Отключаем аккаунт..." }
+    }));
+    try {
+      const data = await request(`/api/admin/users/${targetUser.id}/disabled`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...authHeaders(token) },
+        body: JSON.stringify({
+          disabled: !targetUser.disabled,
+          reason: "Отключено администратором"
+        })
+      });
+      updateAdminUser(data.user);
+      setAdminActionState((current) => ({
+        ...current,
+        [targetUser.id]: { status: "success", message: data.message }
+      }));
+    } catch (error) {
+      setAdminActionState((current) => ({
+        ...current,
+        [targetUser.id]: { status: "error", message: error.message }
+      }));
+    }
+  };
+
+  const deleteAdminUser = async (targetUser) => {
+    if (!window.confirm(`Удалить пользователя ${targetUser.email}? Это действие нельзя отменить.`)) return;
+
+    setAdminNotice("");
+    setAdminActionState((current) => ({
+      ...current,
+      [targetUser.id]: { status: "loading", message: "Удаляем пользователя..." }
+    }));
+    try {
+      const data = await request(`/api/admin/users/${targetUser.id}`, {
+        method: "DELETE",
+        headers: authHeaders(token)
+      });
+      setAdminUsers((current) => current.filter((item) => item.id !== targetUser.id));
+      setAdminActionState((current) => ({
+        ...current,
+        [targetUser.id]: { status: "success", message: data.message ?? "Пользователь удален." }
+      }));
+    } catch (error) {
+      setAdminActionState((current) => ({
+        ...current,
+        [targetUser.id]: { status: "error", message: error.message }
       }));
     }
   };
@@ -875,10 +763,13 @@ function App() {
             users={adminUsers}
             activity={adminActivity}
             notice={adminNotice}
-            resetState={adminResetState}
+            actionState={adminActionState}
             loadUsers={loadAdminUsers}
             loadActivity={loadAdminActivity}
             sendPasswordReset={sendAdminPasswordReset}
+            verifyUserEmail={verifyAdminUserEmail}
+            toggleUserDisabled={toggleAdminUserDisabled}
+            deleteUser={deleteAdminUser}
           />
         )}
         {isManager && (page === "directory" || page === "candidate") && (
@@ -1103,7 +994,7 @@ function LandingAvailability({ appHealth }) {
   );
 }
 
-function AdminPage({ page, users, activity, notice, resetState, loadUsers, loadActivity, sendPasswordReset }) {
+function AdminPage({ page, users, activity, notice, actionState, loadUsers, loadActivity, sendPasswordReset, verifyUserEmail, toggleUserDisabled, deleteUser }) {
   const metrics = activity
     ? [
         ["Всего пользователей", activity.totalUsers],
@@ -1136,7 +1027,7 @@ function AdminPage({ page, users, activity, notice, resetState, loadUsers, loadA
                 <th>Роль</th>
                 <th>Статус</th>
                 <th>Дата</th>
-                <th>Действие</th>
+                <th>Действия</th>
               </tr>
             </thead>
             <tbody>
@@ -1144,8 +1035,11 @@ function AdminPage({ page, users, activity, notice, resetState, loadUsers, loadA
                 <AdminUserRow
                   key={item.id}
                   user={item}
-                  resetState={resetState[item.id]}
+                  actionState={actionState[item.id]}
                   sendPasswordReset={sendPasswordReset}
+                  verifyUserEmail={verifyUserEmail}
+                  toggleUserDisabled={toggleUserDisabled}
+                  deleteUser={deleteUser}
                 />
               ))}
             </tbody>
@@ -1177,9 +1071,9 @@ function AdminPage({ page, users, activity, notice, resetState, loadUsers, loadA
   );
 }
 
-function AdminUserRow({ user, resetState, sendPasswordReset }) {
-  const isSending = resetState?.status === "loading";
-  const isError = resetState?.status === "error";
+function AdminUserRow({ user, actionState, sendPasswordReset, verifyUserEmail, toggleUserDisabled, deleteUser }) {
+  const isBusy = actionState?.status === "loading";
+  const isError = actionState?.status === "error";
 
   return (
     <tr>
@@ -1191,21 +1085,52 @@ function AdminUserRow({ user, resetState, sendPasswordReset }) {
       </td>
       <td className="admin-email-cell">{user.email}</td>
       <td>{roleLabels[user.role] ?? user.role}</td>
-      <td>{user.emailVerified ? "Подтвержден" : "Email не подтвержден"}</td>
+      <td>
+        <div className="admin-status-cell">
+          <span>{user.emailVerified ? "Подтвержден" : "Email не подтвержден"}</span>
+          {user.disabled && <span className="disabled-user-tag">Отключен</span>}
+        </div>
+      </td>
       <td>{new Date(user.createdAt).toLocaleDateString("ru-RU")}</td>
       <td>
         <div className="admin-action-cell">
           <button
             className="button quiet compact"
             type="button"
-            disabled={isSending}
+            disabled={isBusy}
             onClick={() => sendPasswordReset(user.id)}
           >
-            {isSending ? "Отправляем..." : "Сбросить пароль"}
+            Сбросить пароль
           </button>
-          {resetState?.message && (
+          {!user.emailVerified && (
+            <button
+              className="button quiet compact"
+              type="button"
+              disabled={isBusy}
+              onClick={() => verifyUserEmail(user.id)}
+            >
+              Подтвердить email
+            </button>
+          )}
+          <button
+            className="button quiet compact"
+            type="button"
+            disabled={isBusy}
+            onClick={() => toggleUserDisabled(user)}
+          >
+            {user.disabled ? "Включить" : "Отключить"}
+          </button>
+          <button
+            className="button danger compact"
+            type="button"
+            disabled={isBusy}
+            onClick={() => deleteUser(user)}
+          >
+            Удалить
+          </button>
+          {actionState?.message && (
             <span className={isError ? "row-status error" : "row-status"} role="status">
-              {resetState.message}
+              {actionState.message}
             </span>
           )}
         </div>

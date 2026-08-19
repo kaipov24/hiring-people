@@ -1,6 +1,9 @@
 import { sendPasswordResetEmail, sendTestEmail, verifyEmailTransport } from "../config/email.js";
+import { deleteCvFile } from "../config/storage.js";
 import { ActivityEvent } from "../models/activity-event.model.js";
 import { CandidateProfile } from "../models/candidate-profile.model.js";
+import { CandidateStatus } from "../models/candidate-status.model.js";
+import { ProfileView } from "../models/profile-view.model.js";
 import { Recruiter } from "../models/recruiter.model.js";
 import { User } from "../models/user.model.js";
 import { createPasswordResetToken } from "../utils/tokens.js";
@@ -24,6 +27,8 @@ const userPayload = (user) => ({
   role: user.role,
   isTestUser: isTestUser(user),
   emailVerified: user.emailVerified !== false,
+  disabled: Boolean(user.disabledAt),
+  disabledReason: user.disabledReason || "",
   createdAt: user.createdAt,
   updatedAt: user.updatedAt
 });
@@ -55,6 +60,104 @@ export const sendUserPasswordReset = async (req, res) => {
 
   res.status(200).json({
     message: "Ссылка для смены пароля отправлена на email пользователя."
+  });
+};
+
+export const verifyUserEmail = async (req, res) => {
+  const user = await User.findById(req.params.id);
+
+  if (!user) {
+    const error = new Error("Пользователь не найден");
+    error.status = 404;
+    throw error;
+  }
+
+  user.emailVerified = true;
+  user.emailVerificationToken = undefined;
+  user.emailVerificationExpiresAt = undefined;
+  await user.save();
+
+  res.status(200).json({
+    user: userPayload(user),
+    message: "Email пользователя подтвержден."
+  });
+};
+
+export const setUserDisabled = async (req, res) => {
+  const user = await User.findById(req.params.id);
+
+  if (!user) {
+    const error = new Error("Пользователь не найден");
+    error.status = 404;
+    throw error;
+  }
+
+  if (String(user.id) === String(req.user.id)) {
+    const error = new Error("Нельзя отключить свой аккаунт.");
+    error.status = 400;
+    throw error;
+  }
+
+  if (req.body.disabled) {
+    user.disabledAt = user.disabledAt ?? new Date();
+    user.disabledReason = req.body.reason || "Отключено администратором";
+  } else {
+    user.disabledAt = undefined;
+    user.disabledReason = undefined;
+  }
+
+  await user.save();
+
+  res.status(200).json({
+    user: userPayload(user),
+    message: req.body.disabled ? "Пользователь отключен." : "Пользователь включен."
+  });
+};
+
+export const deleteUser = async (req, res) => {
+  const user = await User.findById(req.params.id);
+
+  if (!user) {
+    const error = new Error("Пользователь не найден");
+    error.status = 404;
+    throw error;
+  }
+
+  if (String(user.id) === String(req.user.id)) {
+    const error = new Error("Нельзя удалить свой аккаунт.");
+    error.status = 400;
+    throw error;
+  }
+
+  const candidateProfile = await CandidateProfile.findOne({ user: user.id });
+  await deleteCvFile(candidateProfile?.cv);
+
+  const recruiters = await Recruiter.find({ owner: user.id }).select("_id");
+  const recruiterIds = recruiters.map((recruiter) => recruiter.id);
+
+  await Promise.all([
+    CandidateProfile.deleteMany({ user: user.id }),
+    Recruiter.deleteMany({ owner: user.id }),
+    ProfileView.deleteMany({
+      $or: [
+        { candidate: user.id },
+        { viewedBy: user.id },
+        { recruiter: { $in: recruiterIds } }
+      ]
+    }),
+    CandidateStatus.deleteMany({
+      $or: [
+        { candidate: user.id },
+        { updatedBy: user.id },
+        { recruiter: { $in: recruiterIds } }
+      ]
+    }),
+    ActivityEvent.deleteMany({ user: user.id }),
+    User.deleteOne({ _id: user.id })
+  ]);
+
+  res.status(200).json({
+    message: "Пользователь и связанные данные удалены."
   });
 };
 

@@ -27,11 +27,17 @@ export const authenticate = async (req, _res, next) => {
     }
 
     const payload = verifyAccessToken(token);
-    const user = await User.findById(payload.sub).select("_id email role name");
+    const user = await User.findById(payload.sub).select("_id email role name disabledAt");
 
     if (!user) {
       const error = new Error("Аккаунт больше не существует");
       error.status = 401;
+      throw error;
+    }
+
+    if (user.disabledAt) {
+      const error = new Error("Аккаунт отключен. Обратитесь к администратору.");
+      error.status = 403;
       throw error;
     }
 
@@ -53,9 +59,9 @@ export const optionalAuthenticate = async (req, _res, next) => {
     }
 
     const payload = verifyAccessToken(token);
-    const user = await User.findById(payload.sub).select("_id email role name");
+    const user = await User.findById(payload.sub).select("_id email role name disabledAt");
 
-    if (user) req.user = applyAdminRole(user);
+    if (user && !user.disabledAt) req.user = applyAdminRole(user);
 
     next();
   } catch {

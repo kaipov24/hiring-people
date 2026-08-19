@@ -115,7 +115,15 @@ This is one-way sync from R2 backup to your Mac. Restore uses `--drop`, so it re
 
 ```bash
 cd /opt/inclusive-hire
+./scripts/check-runtime.sh
+```
+
+Manual fallback:
+
+```bash
+cd /opt/inclusive-hire
 docker compose ps
 curl -i http://localhost:8080/health
+curl -i http://localhost:8080/api/health/ready
 docker compose logs --tail=120 api nginx mongodb
 ```

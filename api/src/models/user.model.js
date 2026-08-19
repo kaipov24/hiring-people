@@ -48,6 +48,14 @@ const userSchema = new mongoose.Schema(
     },
     passwordResetExpiresAt: {
       type: Date
+    },
+    disabledAt: {
+      type: Date
+    },
+    disabledReason: {
+      type: String,
+      trim: true,
+      maxlength: 300
     }
   },
   {

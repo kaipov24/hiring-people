@@ -3,6 +3,7 @@ import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
 
 import { errorHandler, notFoundHandler } from "./middleware/error.middleware.js";
+import { requestLogger } from "./middleware/request-logger.middleware.js";
 import activityRoutes from "./routes/activity.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import authRoutes from "./routes/auth.routes.js";
@@ -62,8 +63,10 @@ app.use(
   })
 );
 app.use(express.json({ limit: "1mb" }));
+app.use(requestLogger);
 
 app.use("/health", healthRoutes);
+app.use("/api/health", healthRoutes);
 app.use("/api", apiLimiter);
 app.use("/api/auth/login", authLimiter);
 app.use("/api/auth/register", emailLimiter);
