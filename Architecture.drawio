@@ -1,0 +1,60 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Страница-1" id="W9eMido9t-LONYc9iNY_">
+    <mxGraphModel dx="1542" dy="867" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="jxze-8rLa31oMHo_wMdo-39" edge="1" parent="1" source="jxze-8rLa31oMHo_wMdo-10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="jxze-8rLa31oMHo_wMdo-33" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="jxze-8rLa31oMHo_wMdo-10" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="&lt;font style=&quot;font-size: 20px;&quot;&gt;Cloudflare R2&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="140" x="500" y="570" as="geometry" />
+        </mxCell>
+        <mxCell id="jxze-8rLa31oMHo_wMdo-21" edge="1" parent="1" source="jxze-8rLa31oMHo_wMdo-15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="jxze-8rLa31oMHo_wMdo-16" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="jxze-8rLa31oMHo_wMdo-15" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" value="User" vertex="1">
+          <mxGeometry height="60" width="30" x="220" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="jxze-8rLa31oMHo_wMdo-25" edge="1" parent="1" source="jxze-8rLa31oMHo_wMdo-16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="450" y="250" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="jxze-8rLa31oMHo_wMdo-16" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="&lt;font style=&quot;font-size: 20px;&quot;&gt;Cloudflare URL&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="120" x="290" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="jxze-8rLa31oMHo_wMdo-34" edge="1" parent="1" source="jxze-8rLa31oMHo_wMdo-27" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="jxze-8rLa31oMHo_wMdo-29" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="jxze-8rLa31oMHo_wMdo-27" parent="1" style="shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;darkOpacity=0.05;darkOpacity2=0.1;" value="&lt;pre dir=&quot;ltr&quot;&gt;&lt;code&gt;&lt;font style=&quot;&quot;&gt;&lt;span style=&quot;font-size: 20px;&quot;&gt;Cloudflared&lt;/span&gt;&lt;/font&gt;&lt;/code&gt;&lt;/pre&gt;" vertex="1">
+          <mxGeometry height="70" width="170" x="450" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="jxze-8rLa31oMHo_wMdo-36" edge="1" parent="1" source="jxze-8rLa31oMHo_wMdo-29" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="jxze-8rLa31oMHo_wMdo-32" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="jxze-8rLa31oMHo_wMdo-29" parent="1" style="shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;darkOpacity=0.05;darkOpacity2=0.1;" value="&lt;font style=&quot;font-size: 20px;&quot;&gt;NGINX&lt;/font&gt;&lt;div&gt;&lt;span style=&quot;font-size: 20px;&quot;&gt;8080&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="80" width="120" x="360" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="jxze-8rLa31oMHo_wMdo-41" edge="1" parent="1" source="jxze-8rLa31oMHo_wMdo-30" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="jxze-8rLa31oMHo_wMdo-32" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="jxze-8rLa31oMHo_wMdo-30" parent="1" style="shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;darkOpacity=0.05;darkOpacity2=0.1;" value="&lt;span style=&quot;font-size: 20px;&quot;&gt;Web&lt;/span&gt;&lt;div&gt;&lt;span style=&quot;font-size: 20px;&quot;&gt;frontend&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="80" width="130" x="210" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="jxze-8rLa31oMHo_wMdo-38" edge="1" parent="1" source="jxze-8rLa31oMHo_wMdo-32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="jxze-8rLa31oMHo_wMdo-33" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="jxze-8rLa31oMHo_wMdo-32" parent="1" style="shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;darkOpacity=0.05;darkOpacity2=0.1;" value="&lt;span style=&quot;font-size: 20px;&quot;&gt;API&lt;/span&gt;&lt;div&gt;&lt;span style=&quot;font-size: 20px;&quot;&gt;backend&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="80" width="120" x="360" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="jxze-8rLa31oMHo_wMdo-33" parent="1" style="shape=cube;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;darkOpacity=0.05;darkOpacity2=0.1;" value="&lt;span style=&quot;font-size: 20px;&quot;&gt;Mongodb&lt;/span&gt;&lt;div&gt;&lt;span style=&quot;font-size: 20px;&quot;&gt;database&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="80" width="120" x="510" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="jxze-8rLa31oMHo_wMdo-35" edge="1" parent="1" source="jxze-8rLa31oMHo_wMdo-29" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.282;entryY=-0.01;entryDx=0;entryDy=0;entryPerimeter=0;" target="jxze-8rLa31oMHo_wMdo-30">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
