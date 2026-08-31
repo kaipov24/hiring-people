@@ -65,8 +65,8 @@ Add variables:
 
 ```text
 PUBLIC_SITE_URL=https://kaipov24.github.io/hiring-people
-PUBLIC_APP_URL=http://localhost:8080
-VITE_APP_BASE_URL=http://localhost:8080
+PUBLIC_APP_URL=https://inclusive-hire.org.kg
+VITE_APP_BASE_URL=https://inclusive-hire.org.kg
 JWT_EXPIRES_IN=8h
 SMTP_HOST=mailpit
 SMTP_PORT=1025
@@ -86,7 +86,7 @@ MONGODB_PASSWORD=<strong random value>
 JWT_SECRET=<strong random value>
 ```
 
-For local Mailpit testing, do not add `SMTP_USER`, `SMTP_PASS`, or `CLOUDFLARE_TUNNEL_TOKEN`.
+For local Mailpit testing, do not add `SMTP_USER` or `SMTP_PASS`. For public domain access, add `CLOUDFLARE_TUNNEL_TOKEN`.
 
 Add these later only when needed:
 

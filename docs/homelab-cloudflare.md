@@ -38,19 +38,19 @@ Do not expose Mailpit to the internet. Mailpit is only for local email testing.
 In Cloudflare Zero Trust:
 
 1. Open `Networks` -> `Tunnels`.
-2. Create a tunnel named `inclusive-hire-home`.
+2. Create a tunnel named `inclusive-hire`.
 3. Choose Docker as the connector.
 4. Copy the tunnel token.
 5. Add a public hostname:
-   - Subdomain: `app`
-   - Domain: your domain
-   - Service type: `HTTP`
-   - Service URL: `http://nginx:80`
+  - Subdomain: leave empty
+  - Domain: `inclusive-hire.org.kg`
+  - Service type: `HTTP`
+  - Service URL: `http://nginx:80`
 
 The final app URL should look like:
 
 ```text
-https://app.your-domain.com
+https://inclusive-hire.org.kg
 ```
 
 ## 2. Configure The Laptop
@@ -65,13 +65,13 @@ Edit `.env`:
 
 ```env
 PUBLIC_SITE_URL=https://kaipov24.github.io/hiring-people
-PUBLIC_APP_URL=http://localhost:8080
-VITE_APP_BASE_URL=http://localhost:8080
+PUBLIC_APP_URL=https://inclusive-hire.org.kg
+VITE_APP_BASE_URL=https://inclusive-hire.org.kg
 CLOUDFLARE_TUNNEL_TOKEN=your-cloudflare-token
 ADMIN_EMAILS=your-email@example.com
 SMTP_USER=your-brevo-smtp-login
 SMTP_PASS=your-brevo-smtp-key
-MAIL_FROM="inclusive-hire <verified-sender@your-domain.com>"
+MAIL_FROM="inclusive-hire <no-reply@inclusive-hire.org.kg>"
 ```
 
 Create secrets if they do not exist:
@@ -97,7 +97,7 @@ Check status:
 
 ```bash
 docker compose -f compose.yaml -f compose.homelab.yaml ps
-curl -i https://app.your-domain.com/health
+curl -i https://inclusive-hire.org.kg/health
 ```
 
 ## 4. GitHub Pages Variables
@@ -106,7 +106,7 @@ In GitHub repository settings, set:
 
 ```text
 PUBLIC_SITE_URL=https://kaipov24.github.io/hiring-people
-APP_BASE_URL=https://app.your-domain.com
+APP_BASE_URL=https://inclusive-hire.org.kg
 ```
 
 Then rerun the `Deploy landing page` workflow.
@@ -118,7 +118,7 @@ GitHub Pages remains online.
 The landing page checks:
 
 ```text
-https://app.your-domain.com/health
+https://inclusive-hire.org.kg/health
 ```
 
 If the laptop is offline, login and registration buttons are disabled and the page shows the offline DevOps message.

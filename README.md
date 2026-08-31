@@ -32,7 +32,7 @@ Copy `.env.example` to `.env` for local or cloud configuration.
 Required production values:
 
 - `PUBLIC_SITE_URL`: `https://kaipov24.github.io/hiring-people`.
-- `PUBLIC_APP_URL`: local or tunnel URL for the running app/API.
+- `PUBLIC_APP_URL`: `https://inclusive-hire.org.kg` for the home-lab app/API.
 - `JWT_EXPIRES_IN`: login session lifetime.
 - SMTP settings: `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`.
 - `ADMIN_EMAILS`: comma-separated admin account emails.
@@ -57,7 +57,7 @@ Set `PUBLIC_SITE_URL=https://kaipov24.github.io/hiring-people` before building t
 
 1. Provision MongoDB, persistent upload storage, and SMTP.
 2. Set production secrets and environment variables from `.env.example`.
-3. Build with `PUBLIC_SITE_URL` set to the final HTTPS domain.
+3. Build with `PUBLIC_APP_URL` set to the final HTTPS domain.
 4. Put TLS in front of nginx through your cloud load balancer, reverse proxy, or managed ingress.
 5. Keep `/health`, `/robots.txt`, and `/sitemap.xml` publicly reachable.
 6. Configure SPF, DKIM, and DMARC for the email sender domain.
@@ -68,7 +68,7 @@ You can keep the public landing page on GitHub Pages and run the private app/API
 
 - Landing page: build with `VITE_DEPLOY_TARGET=landing`.
 - Home app: build normally with `VITE_DEPLOY_TARGET=app`.
-- `VITE_APP_BASE_URL` should point to the home app URL. Keep `http://localhost:8080` for local testing, then change it when the Cloudflare Tunnel hostname is ready.
+- `VITE_APP_BASE_URL` should point to the home app URL: `https://inclusive-hire.org.kg`.
 - The landing page checks `VITE_APP_BASE_URL/health`.
 - If the home server is online, login and registration buttons link to the app.
 - If the home server is offline, the landing page stays online but disables login/registration.
