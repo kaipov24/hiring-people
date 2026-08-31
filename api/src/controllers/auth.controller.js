@@ -16,11 +16,74 @@ const publicUser = (user) => ({
   disabled: Boolean(user.disabledAt)
 });
 
+const emailDeliveryError = () => {
+  const error = new Error("Не удалось отправить письмо. Проверьте настройки SMTP или попробуйте позже.");
+  error.status = 502;
+  return error;
+};
+
+const sendVerificationOrThrow = async ({ to, name, token }) => {
+  try {
+    await sendVerificationEmail({ to, name, token });
+  } catch (error) {
+    console.error("Failed to send verification email", {
+      to,
+      message: error.message,
+      code: error.code,
+      response: error.response
+    });
+    throw emailDeliveryError();
+  }
+};
+
+const sendPasswordResetOrThrow = async ({ to, name, token }) => {
+  try {
+    await sendPasswordResetEmail({ to, name, token });
+  } catch (error) {
+    console.error("Failed to send password reset email", {
+      to,
+      message: error.message,
+      code: error.code,
+      response: error.response
+    });
+    throw emailDeliveryError();
+  }
+};
+
 export const register = async (req, res) => {
   const { email, password, role, name } = req.body;
   const existingUser = await User.findOne({ email });
 
   if (existingUser) {
+    if (existingUser.emailVerified === false) {
+      const previousVerificationToken = existingUser.emailVerificationToken;
+      const previousVerificationExpiresAt = existingUser.emailVerificationExpiresAt;
+      const verification = createEmailVerificationToken();
+      existingUser.emailVerificationToken = verification.emailVerificationToken;
+      existingUser.emailVerificationExpiresAt = verification.emailVerificationExpiresAt;
+      await existingUser.save();
+
+      try {
+        await sendVerificationOrThrow({
+          to: existingUser.email,
+          name: existingUser.name,
+          token: verification.emailVerificationToken
+        });
+      } catch (error) {
+        existingUser.emailVerificationToken = previousVerificationToken;
+        existingUser.emailVerificationExpiresAt = previousVerificationExpiresAt;
+        await existingUser.save();
+        throw error;
+      }
+
+      res.status(200).json({
+        user: publicUser(existingUser),
+        emailVerificationRequired: true,
+        message: "Мы отправили новую ссылку для подтверждения email."
+      });
+      return;
+    }
+
     const error = new Error("Аккаунт с таким email уже существует");
     error.status = 409;
     throw error;
@@ -36,7 +99,18 @@ export const register = async (req, res) => {
     emailVerified: false,
     ...verification
   });
-  await sendVerificationEmail({ to: email, name, token: verification.emailVerificationToken });
+
+  try {
+    await sendVerificationOrThrow({ to: email, name, token: verification.emailVerificationToken });
+  } catch (error) {
+    const deleteResult = await User.deleteOne({ _id: user._id });
+    console.error("Rolled back user after verification email failure", {
+      userId: user.id,
+      email,
+      deletedCount: deleteResult.deletedCount
+    });
+    throw error;
+  }
 
   res.status(201).json({
     user: publicUser(user),
@@ -124,7 +198,7 @@ export const resendVerification = async (req, res) => {
   user.emailVerificationToken = verification.emailVerificationToken;
   user.emailVerificationExpiresAt = verification.emailVerificationExpiresAt;
   await user.save();
-  await sendVerificationEmail({ to: user.email, name: user.name, token: verification.emailVerificationToken });
+  await sendVerificationOrThrow({ to: user.email, name: user.name, token: verification.emailVerificationToken });
 
   res.status(200).json({
     message: "Если аккаунт требует подтверждения, ссылка будет отправлена."
@@ -145,7 +219,7 @@ export const forgotPassword = async (req, res) => {
   user.passwordResetToken = reset.passwordResetToken;
   user.passwordResetExpiresAt = reset.passwordResetExpiresAt;
   await user.save();
-  await sendPasswordResetEmail({ to: user.email, name: user.name, token: reset.passwordResetToken });
+  await sendPasswordResetOrThrow({ to: user.email, name: user.name, token: reset.passwordResetToken });
 
   res.status(200).json({
     message: "Если аккаунт существует, ссылка для смены пароля будет отправлена на email."
