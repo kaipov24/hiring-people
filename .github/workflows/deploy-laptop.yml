@@ -84,6 +84,7 @@ jobs:
           ./scripts/check-env.sh --require-tunnel
           docker compose -f compose.yaml -f compose.homelab.yaml pull api web
           docker compose -f compose.yaml -f compose.homelab.yaml up -d --remove-orphans
+          docker compose -f compose.yaml -f compose.homelab.yaml restart nginx cloudflared
           docker compose -f compose.yaml -f compose.homelab.yaml ps
 
       - name: Verify app health
