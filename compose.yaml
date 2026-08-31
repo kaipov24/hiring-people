@@ -73,7 +73,7 @@ services:
       SMTP_SOCKET_TIMEOUT_MS: ${SMTP_SOCKET_TIMEOUT_MS:-30000}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
-      MAIL_FROM: ${MAIL_FROM:-inclusive-hire <no-reply@inclusive-hire.local>}
+      MAIL_FROM: ${MAIL_FROM:-inclusive-hire <no-reply@inclusive-hire.org.kg>}
       ADMIN_EMAILS: ${ADMIN_EMAILS:-}
       STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
       R2_ENDPOINT: ${R2_ENDPOINT:-}

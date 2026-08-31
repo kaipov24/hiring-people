@@ -3,7 +3,7 @@ import { APP_BASE_URL, SESSION_STORAGE_KEY, VISITOR_STORAGE_KEY } from "./config
 export const toList = (value) => value.split(",").map((item) => item.trim()).filter(Boolean);
 
 export const contactInfo = (profile) => ({
-  email: profile?.contacts?.email || profile?.user?.email || "contact@inclusive-hire.local",
+  email: profile?.contacts?.email || profile?.user?.email || "support@inclusive-hire.org.kg",
   messengerType: profile?.contacts?.messengerType || "telegram",
   messenger: profile?.contacts?.messenger || "@inclusive_hire"
 });

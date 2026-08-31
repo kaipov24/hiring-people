@@ -61,7 +61,7 @@ jobs:
           SMTP_SOCKET_TIMEOUT_MS=${{ vars.SMTP_SOCKET_TIMEOUT_MS || '30000' }}
           SMTP_USER=${{ secrets.SMTP_USER }}
           SMTP_PASS=${{ secrets.SMTP_PASS }}
-          MAIL_FROM=${{ vars.MAIL_FROM || 'kaipov.kayrat@gmail.com' }}
+          MAIL_FROM=${{ vars.MAIL_FROM || 'inclusive-hire <no-reply@inclusive-hire.org.kg>' }}
           STORAGE_DRIVER=${{ vars.STORAGE_DRIVER || 'local' }}
           R2_ENDPOINT=${{ vars.R2_ENDPOINT }}
           R2_BUCKET=${{ vars.R2_BUCKET }}
@@ -88,5 +88,6 @@ jobs:
           docker compose -f compose.yaml -f compose.homelab.yaml ps
 
       - name: Verify app health
+        working-directory: /opt/inclusive-hire
         run: |
-          curl --fail --show-error --silent http://localhost:8080/health
+          ./scripts/check-runtime.sh

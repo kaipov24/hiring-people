@@ -75,7 +75,7 @@ SMTP_REQUIRE_TLS=false
 SMTP_TLS_REJECT_UNAUTHORIZED=true
 SMTP_CONNECTION_TIMEOUT_MS=10000
 SMTP_SOCKET_TIMEOUT_MS=30000
-MAIL_FROM=kaipov.kayrat@gmail.com
+MAIL_FROM="inclusive-hire <no-reply@inclusive-hire.org.kg>"
 ```
 
 Add secrets:

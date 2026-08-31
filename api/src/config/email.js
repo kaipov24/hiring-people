@@ -42,7 +42,7 @@ export const sendEmail = async ({ to, subject, text, html }) => {
   }
 
   await transport.sendMail({
-    from: process.env.MAIL_FROM ?? "inclusive-hire <no-reply@inclusive-hire.local>",
+    from: process.env.MAIL_FROM ?? "inclusive-hire <no-reply@inclusive-hire.org.kg>",
     to,
     subject,
     text,
