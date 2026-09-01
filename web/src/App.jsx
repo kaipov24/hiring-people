@@ -336,7 +336,7 @@ function App() {
 
       if (data.emailVerificationRequired) {
         setVerificationToken("");
-        setAuthNotice("Мы отправили ссылку для подтверждения email. Откройте письмо и перейдите по ссылке, чтобы завершить регистрацию.");
+        setAuthNotice(data.message ?? "Мы отправили ссылку для подтверждения email. Проверьте входящие и папку Спам.");
         setAuthMode("verify");
         return;
       }
@@ -1788,7 +1788,7 @@ function AuthModal({ authForm, authMode, authError, authNotice, verificationToke
                 <button className="button primary wide" type="button" onClick={verifyEmail}>Подтвердить email</button>
               </>
             ) : (
-              <p>Письмо с подтверждением отправлено. Откройте ссылку из письма, чтобы завершить регистрацию.</p>
+              <p>Письмо с подтверждением отправлено. Проверьте входящие и папку Спам, затем откройте ссылку из письма.</p>
             )}
           </div>
         ) : isForgot ? (

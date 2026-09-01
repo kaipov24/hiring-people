@@ -22,6 +22,8 @@ const emailDeliveryError = () => {
   return error;
 };
 
+const verificationEmailSentMessage = "Мы отправили ссылку для подтверждения email. Проверьте входящие и папку Спам.";
+
 const sendVerificationOrThrow = async ({ to, name, token }) => {
   try {
     await sendVerificationEmail({ to, name, token });
@@ -56,30 +58,36 @@ export const register = async (req, res) => {
 
   if (existingUser) {
     if (existingUser.emailVerified === false) {
-      const previousVerificationToken = existingUser.emailVerificationToken;
-      const previousVerificationExpiresAt = existingUser.emailVerificationExpiresAt;
-      const verification = createEmailVerificationToken();
-      existingUser.emailVerificationToken = verification.emailVerificationToken;
-      existingUser.emailVerificationExpiresAt = verification.emailVerificationExpiresAt;
-      await existingUser.save();
+      let verificationToken = existingUser.emailVerificationToken;
+      const hasValidToken = verificationToken && existingUser.emailVerificationExpiresAt > new Date();
+
+      if (!hasValidToken) {
+        const verification = createEmailVerificationToken();
+        verificationToken = verification.emailVerificationToken;
+        existingUser.emailVerificationToken = verification.emailVerificationToken;
+        existingUser.emailVerificationExpiresAt = verification.emailVerificationExpiresAt;
+        await existingUser.save();
+      }
 
       try {
         await sendVerificationOrThrow({
           to: existingUser.email,
           name: existingUser.name,
-          token: verification.emailVerificationToken
+          token: verificationToken
         });
       } catch (error) {
-        existingUser.emailVerificationToken = previousVerificationToken;
-        existingUser.emailVerificationExpiresAt = previousVerificationExpiresAt;
-        await existingUser.save();
+        if (!hasValidToken) {
+          existingUser.emailVerificationToken = undefined;
+          existingUser.emailVerificationExpiresAt = undefined;
+          await existingUser.save();
+        }
         throw error;
       }
 
       res.status(200).json({
         user: publicUser(existingUser),
         emailVerificationRequired: true,
-        message: "Мы отправили новую ссылку для подтверждения email."
+        message: verificationEmailSentMessage
       });
       return;
     }
@@ -115,7 +123,7 @@ export const register = async (req, res) => {
   res.status(201).json({
     user: publicUser(user),
     emailVerificationRequired: true,
-    message: "Мы отправили ссылку для подтверждения email."
+    message: verificationEmailSentMessage
   });
 };
 

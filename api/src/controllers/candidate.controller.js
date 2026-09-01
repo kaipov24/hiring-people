@@ -94,11 +94,23 @@ export const getCandidate = async (req, res) => {
   const recruiter = await Recruiter.findOne({ owner: req.user.id });
 
   if (recruiter) {
-    await ProfileView.create({
-      candidate: profile.user.id,
-      recruiter: recruiter.id,
-      viewedBy: req.user.id
-    });
+    await ProfileView.findOneAndUpdate(
+      {
+        candidate: profile.user.id,
+        recruiter: recruiter.id
+      },
+      {
+        $set: {
+          viewedBy: req.user.id,
+          viewedAt: new Date()
+        }
+      },
+      {
+        new: true,
+        setDefaultsOnInsert: true,
+        upsert: true
+      }
+    );
   }
 
   res.status(200).json({
@@ -229,9 +241,16 @@ export const listMyProfileViews = async (req, res) => {
     .populate("recruiter", "name website accessibilityCommitments")
     .sort({ viewedAt: -1 })
     .limit(100);
+  const latestViewsByRecruiter = new Map();
+
+  views.forEach((view) => {
+    const recruiterId = view.recruiter?.id ?? view.recruiter?._id?.toString() ?? view.recruiter?.toString();
+    if (!recruiterId || latestViewsByRecruiter.has(recruiterId)) return;
+    latestViewsByRecruiter.set(recruiterId, view);
+  });
 
   res.status(200).json({
-    views: views.map((view) => ({
+    views: Array.from(latestViewsByRecruiter.values()).map((view) => ({
       id: view.id,
       recruiter: view.recruiter
         ? {
