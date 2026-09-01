@@ -1,0 +1,35 @@
+name: Deploy Cloudflare app fallback
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "cloudflare/**"
+      - ".github/workflows/deploy-cloudflare-worker.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-app-fallback
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cloudflare
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: cloudflare
+          command: deploy

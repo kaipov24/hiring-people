@@ -1,0 +1,11 @@
+name = "inclusive-hire-app-fallback"
+main = "app-fallback-worker.js"
+compatibility_date = "2026-09-01"
+
+routes = [
+  { pattern = "app.inclusive-hire.org.kg/*", zone_name = "inclusive-hire.org.kg" }
+]
+
+[vars]
+APP_ORIGIN_URL = "https://origin-app.inclusive-hire.org.kg"
+PUBLIC_SITE_URL = "https://inclusive-hire.org.kg"

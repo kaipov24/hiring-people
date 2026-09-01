@@ -14,6 +14,7 @@ import {
   emptyResetForm,
   employmentFormatLabels,
   IS_LANDING,
+  PUBLIC_SITE_URL,
   roleLabels,
   sampleCandidates,
   SESSION_STORAGE_KEY,
@@ -100,14 +101,29 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!IS_LANDING) return;
+    if (IS_LANDING) {
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), 3500);
+
+      fetch(`${APP_BASE_URL}/health`, { signal: controller.signal })
+        .then((response) => setAppHealth(response.ok ? "online" : "offline"))
+        .catch(() => setAppHealth("offline"))
+        .finally(() => window.clearTimeout(timeout));
+
+      return () => {
+        window.clearTimeout(timeout);
+        controller.abort();
+      };
+    }
 
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 3500);
 
-    fetch(`${APP_BASE_URL}/health`, { signal: controller.signal })
-      .then((response) => setAppHealth(response.ok ? "online" : "offline"))
-      .catch(() => setAppHealth("offline"))
+    fetch("/health", { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) window.location.replace(PUBLIC_SITE_URL);
+      })
+      .catch(() => window.location.replace(PUBLIC_SITE_URL))
       .finally(() => window.clearTimeout(timeout));
 
     return () => {
