@@ -782,7 +782,6 @@ function App() {
 
       <main id="main-content">
         {page !== "candidate" && <Hero user={user} isCandidate={isCandidate} isManager={isManager} isAdmin={isAdmin} page={page} showAuth={showAuth} setPage={setPage} appHealth={appHealth} />}
-        {!user && IS_LANDING && <LandingAvailability appHealth={appHealth} />}
         {!user && <PublicHome />}
         {isAdmin && (page === "adminUsers" || page === "adminActivity") && (
           <AdminPage
@@ -1014,21 +1013,6 @@ function LandingAwareAction({ mode, label, variant, role, appHealth, showAuth })
   );
 }
 
-function LandingAvailability({ appHealth }) {
-  const copy = appHealth === "online"
-    ? "Домашний сервер сейчас онлайн: регистрация, вход и email-ссылки работают."
-    : appHealth === "checking"
-      ? "Проверяем доступность домашнего сервера для регистрации и входа."
-      : "Сервер сейчас офлайн, потому что DevOps спит. Попробуйте зайти снова с 09:00 до 23:00 UTC+6. Главная страница доступна, но регистрация, вход и email-ссылки временно недоступны.";
-
-  return (
-    <section className={`landing-status landing-status-${appHealth}`} aria-live="polite">
-      <span>{appHealth === "online" ? "Онлайн" : appHealth === "checking" ? "Проверка" : "Офлайн"}</span>
-      <p>{copy}</p>
-    </section>
-  );
-}
-
 function AdminPage({ page, users, activity, notice, actionState, loadUsers, loadActivity, sendPasswordReset, verifyUserEmail, toggleUserDisabled, deleteUser }) {
   const metrics = activity
     ? [
@@ -1213,7 +1197,6 @@ function DirectoryPage({ page, filters, setFilters, loadEmployees, employees, se
           setPage(returnPage);
         }}
         downloadCandidateCv={downloadCandidateCv}
-        updateStatus={updateStatus}
         canManageCandidates={canManageCandidates}
       />
     );
@@ -1671,7 +1654,9 @@ function CandidateCard({ candidate, onClick, preview = false }) {
   return <article className="candidate-card interactive">{body}</article>;
 }
 
-function CandidateProfilePage({ profile, onBack, downloadCandidateCv, updateStatus, canManageCandidates = true }) {
+function CandidateProfilePage({ profile, onBack, downloadCandidateCv, canManageCandidates = true }) {
+  const canDownloadCv = Boolean(profile.cv?.originalName);
+
   return (
     <section className="candidate-profile-page" aria-label="Профиль кандидата">
       <div className="profile-title">
@@ -1681,23 +1666,8 @@ function CandidateProfilePage({ profile, onBack, downloadCandidateCv, updateStat
         </div>
         <button className="button secondary" type="button" onClick={onBack}>Назад к профилям</button>
       </div>
-      <div className={canManageCandidates ? "candidate-profile-layout" : "candidate-profile-layout simple"}>
-        <ProfileSummary profile={profile} detailed onDownloadCv={!canManageCandidates && profile.cv?.originalName ? () => downloadCandidateCv(profile) : undefined} />
-        {canManageCandidates && (
-          <aside className="profile-actions-card">
-            <h3>Действия</h3>
-            <button className="button primary full" type="button" onClick={() => downloadCandidateCv(profile)} disabled={!profile.cv?.originalName}>
-              {profile.cv?.originalName ? "Скачать резюме" : "Резюме не загружено"}
-            </button>
-            <div className="status-actions vertical">
-              {statuses.map((status) => (
-                <button key={status} className="button secondary full" type="button" onClick={() => updateStatus(profile.id, status)}>
-                  {statusLabels[status]}
-                </button>
-              ))}
-            </div>
-          </aside>
-        )}
+      <div className="candidate-profile-layout">
+        <ProfileSummary profile={profile} detailed onDownloadCv={canDownloadCv ? () => downloadCandidateCv(profile) : undefined} />
       </div>
     </section>
   );
