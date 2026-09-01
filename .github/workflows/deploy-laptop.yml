@@ -119,5 +119,7 @@ jobs:
 
       - name: Verify app health
         working-directory: /opt/inclusive-hire
+        env:
+          COMPOSE_FILE: compose.yaml:compose.homelab.yaml
         run: |
           ./scripts/check-runtime.sh

@@ -7,7 +7,7 @@ const normalizeSiteUrl = (value) => {
 
 const siteUrl = normalizeSiteUrl(process.env.VITE_PUBLIC_SITE_URL ?? process.env.PUBLIC_SITE_URL);
 const buildDate = new Date().toISOString();
-const basePath = process.env.VITE_BASE_PATH || (process.env.VITE_DEPLOY_TARGET === "landing" ? "./" : "/");
+const basePath = process.env.VITE_BASE_PATH || "/";
 
 const seoPlugin = () => ({
   name: "inclusive-hire-seo",
