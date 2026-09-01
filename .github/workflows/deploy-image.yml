@@ -62,8 +62,8 @@ jobs:
           file: ./web/Dockerfile
           push: true
           build-args: |
-            PUBLIC_SITE_URL=${{ vars.PUBLIC_APP_URL || 'https://inclusive-hire.org.kg' }}
-            VITE_APP_BASE_URL=${{ vars.PUBLIC_APP_URL || 'https://inclusive-hire.org.kg' }}
+            PUBLIC_SITE_URL=${{ vars.PUBLIC_APP_URL || 'https://app.inclusive-hire.org.kg' }}
+            VITE_APP_BASE_URL=${{ vars.PUBLIC_APP_URL || 'https://app.inclusive-hire.org.kg' }}
           tags: |
             ${{ env.WEB_IMAGE }}:latest
             ${{ env.WEB_IMAGE }}:${{ github.sha }}

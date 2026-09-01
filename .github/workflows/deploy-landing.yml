@@ -41,10 +41,10 @@ jobs:
       - name: Build landing page
         run: npm run build:landing
         env:
-          PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL }}
-          VITE_PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL }}
-          VITE_APP_BASE_URL: ${{ vars.APP_BASE_URL }}
-          VITE_BASE_PATH: ${{ vars.PAGES_BASE_PATH || './' }}
+          PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || 'https://inclusive-hire.org.kg' }}
+          VITE_PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL || 'https://inclusive-hire.org.kg' }}
+          VITE_APP_BASE_URL: ${{ vars.APP_BASE_URL || 'https://app.inclusive-hire.org.kg' }}
+          VITE_BASE_PATH: ${{ vars.PAGES_BASE_PATH || '/' }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

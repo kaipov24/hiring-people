@@ -64,9 +64,9 @@ Repository -> Settings -> Secrets and variables -> Actions
 Add variables:
 
 ```text
-PUBLIC_SITE_URL=https://kaipov24.github.io/hiring-people
-PUBLIC_APP_URL=https://inclusive-hire.org.kg
-VITE_APP_BASE_URL=https://inclusive-hire.org.kg
+PUBLIC_SITE_URL=https://inclusive-hire.org.kg
+PUBLIC_APP_URL=https://app.inclusive-hire.org.kg
+VITE_APP_BASE_URL=https://app.inclusive-hire.org.kg
 JWT_EXPIRES_IN=8h
 SMTP_HOST=mailpit
 SMTP_PORT=1025

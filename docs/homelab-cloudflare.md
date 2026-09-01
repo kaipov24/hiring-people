@@ -1,6 +1,6 @@
 # Home Lab Cloudflare Tunnel
 
-Use this setup when GitHub Pages serves the always-online landing page and the full app runs on your Linux laptop.
+Use this setup when GitHub Pages serves the always-online landing page at `https://inclusive-hire.org.kg` and the full app runs on your Linux laptop at `https://app.inclusive-hire.org.kg`.
 
 ## Temporary Internet Access Without A Domain
 
@@ -42,7 +42,7 @@ In Cloudflare Zero Trust:
 3. Choose Docker as the connector.
 4. Copy the tunnel token.
 5. Add a public hostname:
-  - Subdomain: leave empty
+  - Subdomain: `app`
   - Domain: `inclusive-hire.org.kg`
   - Service type: `HTTP`
   - Service URL: `http://nginx:80`
@@ -50,7 +50,7 @@ In Cloudflare Zero Trust:
 The final app URL should look like:
 
 ```text
-https://inclusive-hire.org.kg
+https://app.inclusive-hire.org.kg
 ```
 
 ## 2. Configure The Laptop
@@ -64,9 +64,9 @@ cp .env.homelab.example .env
 Edit `.env`:
 
 ```env
-PUBLIC_SITE_URL=https://kaipov24.github.io/hiring-people
-PUBLIC_APP_URL=https://inclusive-hire.org.kg
-VITE_APP_BASE_URL=https://inclusive-hire.org.kg
+PUBLIC_SITE_URL=https://inclusive-hire.org.kg
+PUBLIC_APP_URL=https://app.inclusive-hire.org.kg
+VITE_APP_BASE_URL=https://app.inclusive-hire.org.kg
 CLOUDFLARE_TUNNEL_TOKEN=your-cloudflare-token
 ADMIN_EMAILS=your-email@example.com
 SMTP_USER=your-brevo-smtp-login
@@ -97,7 +97,7 @@ Check status:
 
 ```bash
 docker compose -f compose.yaml -f compose.homelab.yaml ps
-curl -i https://inclusive-hire.org.kg/health
+curl -i https://app.inclusive-hire.org.kg/health
 ```
 
 ## 4. GitHub Pages Variables
@@ -105,8 +105,8 @@ curl -i https://inclusive-hire.org.kg/health
 In GitHub repository settings, set:
 
 ```text
-PUBLIC_SITE_URL=https://kaipov24.github.io/hiring-people
-APP_BASE_URL=https://inclusive-hire.org.kg
+PUBLIC_SITE_URL=https://inclusive-hire.org.kg
+APP_BASE_URL=https://app.inclusive-hire.org.kg
 ```
 
 Then rerun the `Deploy landing page` workflow.
@@ -118,7 +118,7 @@ GitHub Pages remains online.
 The landing page checks:
 
 ```text
-https://inclusive-hire.org.kg/health
+https://app.inclusive-hire.org.kg/health
 ```
 
 If the laptop is offline, login and registration buttons are disabled and the page shows the offline DevOps message.
