@@ -64,6 +64,9 @@ function App() {
   const isCandidate = user?.role === "candidate";
   const isManager = user?.role === "hiring_manager";
   const isAdmin = user?.role === "admin";
+  const showAuthPage = !IS_LANDING && authOpen && !user;
+  const publicSiteHref = new URL(PUBLIC_SITE_URL, window.location.href).href;
+  const shouldRedirectLoggedOut = !IS_LANDING && !user && !authOpen && !readAuthLink() && publicSiteHref !== window.location.href;
   const profileLists = useMemo(
     () => ({
       skills: toList(profileForm.skills),
@@ -120,6 +123,11 @@ function App() {
       window.removeEventListener("hashchange", syncAuthRoute);
     };
   }, []);
+
+  useEffect(() => {
+    if (!shouldRedirectLoggedOut) return;
+    window.location.replace(publicSiteHref);
+  }, [shouldRedirectLoggedOut, publicSiteHref]);
 
   useEffect(() => {
     if (IS_LANDING) {
@@ -833,25 +841,15 @@ function App() {
     }
   };
 
-  const showAuthPage = !IS_LANDING && authOpen && !user;
+  if (shouldRedirectLoggedOut) {
+    return <div className="public-auth-shell" />;
+  }
 
-  return (
-    <div className="app-shell">
-      <a className="skip-link" href="#main-content">К содержанию</a>
-      <Header
-        user={user}
-        page={page}
-        isCandidate={isCandidate}
-        isManager={isManager}
-        isAdmin={isAdmin}
-        setPage={setPage}
-        showAuth={showAuth}
-        signOut={signOut}
-        appHealth={appHealth}
-      />
-
-      <main id="main-content">
-        {showAuthPage ? (
+  if (showAuthPage) {
+    return (
+      <div className="public-auth-shell">
+        <a className="skip-link" href="#main-content">К содержанию</a>
+        <main id="main-content">
           <AuthPage
             authForm={authForm}
             authMode={authMode}
@@ -871,10 +869,30 @@ function App() {
             requestPasswordReset={requestPasswordReset}
             resetPassword={resetPassword}
           />
-        ) : (
-          <>
-            {page !== "candidate" && <Hero user={user} isCandidate={isCandidate} isManager={isManager} isAdmin={isAdmin} page={page} showAuth={showAuth} setPage={setPage} appHealth={appHealth} />}
-            {!user && <PublicHome />}
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="app-shell">
+      <a className="skip-link" href="#main-content">К содержанию</a>
+      <Header
+        user={user}
+        page={page}
+        isCandidate={isCandidate}
+        isManager={isManager}
+        isAdmin={isAdmin}
+        setPage={setPage}
+        showAuth={showAuth}
+        signOut={signOut}
+        appHealth={appHealth}
+      />
+
+      <main id="main-content">
+        <>
+          {page !== "candidate" && <Hero user={user} isCandidate={isCandidate} isManager={isManager} isAdmin={isAdmin} page={page} showAuth={showAuth} setPage={setPage} appHealth={appHealth} />}
+          {!user && <PublicHome />}
             {isAdmin && (page === "adminUsers" || page === "adminActivity") && (
               <AdminPage
                 page={page}
@@ -965,8 +983,7 @@ function App() {
               />
             )}
             <LegalNote />
-          </>
-        )}
+        </>
       </main>
 
       <footer className="site-footer">
