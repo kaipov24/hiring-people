@@ -1000,10 +1000,17 @@ function Hero({ user, isCandidate, isManager, isAdmin, page, showAuth, setPage, 
         <h1>{title}</h1>
         <p>{text}</p>
         {publicHero && (
-          <div className="hero-actions">
-            <LandingAwareAction mode="login" label="Найти сотрудника" variant="primary" role="hiring_manager" appHealth={appHealth} showAuth={showAuth} />
-            <LandingAwareAction mode="login" label="Загрузить резюме" variant="secondary" role="candidate" appHealth={appHealth} showAuth={showAuth} />
-          </div>
+          <>
+            <div className="hero-actions">
+              <LandingAwareAction mode="login" label="Найти сотрудника" variant="primary" role="hiring_manager" appHealth={appHealth} showAuth={showAuth} />
+              <LandingAwareAction mode="login" label="Загрузить резюме" variant="secondary" role="candidate" appHealth={appHealth} showAuth={showAuth} />
+            </div>
+            {IS_LANDING && appHealth === "offline" && (
+              <p className="hero-offline-note">
+                Сервер сейчас офлайн, потому что DevOps спит. Попробуйте зайти снова с 09:00 до 23:00 UTC+6.
+              </p>
+            )}
+          </>
         )}
         {isCandidate && <button className="button primary" type="button" onClick={() => setPage("profile")}>Редактировать профиль</button>}
       </div>
