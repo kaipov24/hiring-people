@@ -38,6 +38,10 @@ const sendVerificationOrThrow = async ({ to, name, token }) => {
   }
 };
 
+const sendVerificationInBackground = ({ to, name, token }) => {
+  sendVerificationOrThrow({ to, name, token }).catch(() => {});
+};
+
 const sendPasswordResetOrThrow = async ({ to, name, token }) => {
   try {
     await sendPasswordResetEmail({ to, name, token });
@@ -69,20 +73,11 @@ export const register = async (req, res) => {
         await existingUser.save();
       }
 
-      try {
-        await sendVerificationOrThrow({
-          to: existingUser.email,
-          name: existingUser.name,
-          token: verificationToken
-        });
-      } catch (error) {
-        if (!hasValidToken) {
-          existingUser.emailVerificationToken = undefined;
-          existingUser.emailVerificationExpiresAt = undefined;
-          await existingUser.save();
-        }
-        throw error;
-      }
+      sendVerificationInBackground({
+        to: existingUser.email,
+        name: existingUser.name,
+        token: verificationToken
+      });
 
       res.status(200).json({
         user: publicUser(existingUser),
@@ -108,17 +103,7 @@ export const register = async (req, res) => {
     ...verification
   });
 
-  try {
-    await sendVerificationOrThrow({ to: email, name, token: verification.emailVerificationToken });
-  } catch (error) {
-    const deleteResult = await User.deleteOne({ _id: user._id });
-    console.error("Rolled back user after verification email failure", {
-      userId: user.id,
-      email,
-      deletedCount: deleteResult.deletedCount
-    });
-    throw error;
-  }
+  sendVerificationInBackground({ to: email, name, token: verification.emailVerificationToken });
 
   res.status(201).json({
     user: publicUser(user),
