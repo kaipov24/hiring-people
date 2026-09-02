@@ -33,6 +33,7 @@ function App() {
   const [authMode, setAuthMode] = useState(initialAuthLink?.mode ?? "login");
   const [authForm, setAuthForm] = useState({ ...emptyAuthForm, role: initialAuthLink?.role ?? "candidate" });
   const [authError, setAuthError] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
   const [authNotice, setAuthNotice] = useState("");
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [deleteAccountLoading, setDeleteAccountLoading] = useState(false);
@@ -331,6 +332,7 @@ function App() {
     setAuthMode(mode);
     setAuthForm({ ...emptyAuthForm, role });
     setAuthError("");
+    setAuthLoading(false);
     setAuthNotice("");
     setVerificationToken("");
     setResetForm({ ...emptyResetForm, email: authForm.email });
@@ -343,6 +345,7 @@ function App() {
   const closeAuth = () => {
     setAuthOpen(false);
     setAuthError("");
+    setAuthLoading(false);
     setAuthNotice("");
     window.history.pushState(null, "", "/");
   };
@@ -374,6 +377,7 @@ function App() {
   const submitAuth = async (event) => {
     event.preventDefault();
     setAuthError("");
+    setAuthLoading(true);
 
     try {
       const path = authMode === "login" ? "/api/auth/login" : "/api/auth/register";
@@ -398,12 +402,15 @@ function App() {
       closeAuth();
     } catch (error) {
       setAuthError(error.message);
+    } finally {
+      setAuthLoading(false);
     }
   };
 
   const verifyEmail = async () => {
     setAuthError("");
     setAuthNotice("");
+    setAuthLoading(true);
 
     try {
       const data = await request("/api/auth/verify-email", {
@@ -415,6 +422,8 @@ function App() {
       closeAuth();
     } catch (error) {
       setAuthError(error.message);
+    } finally {
+      setAuthLoading(false);
     }
   };
 
@@ -422,6 +431,7 @@ function App() {
     event.preventDefault();
     setAuthError("");
     setAuthNotice("");
+    setAuthLoading(true);
 
     try {
       const data = await request("/api/auth/forgot-password", {
@@ -433,6 +443,8 @@ function App() {
       setResetForm({ ...resetForm, token: data.passwordResetToken ?? "" });
     } catch (error) {
       setAuthError(error.message);
+    } finally {
+      setAuthLoading(false);
     }
   };
 
@@ -440,6 +452,7 @@ function App() {
     event.preventDefault();
     setAuthError("");
     setAuthNotice("");
+    setAuthLoading(true);
 
     try {
       const data = await request("/api/auth/reset-password", {
@@ -454,6 +467,8 @@ function App() {
       window.history.replaceState(null, "", "/login");
     } catch (error) {
       setAuthError(error.message);
+    } finally {
+      setAuthLoading(false);
     }
   };
 
@@ -841,6 +856,7 @@ function App() {
             authForm={authForm}
             authMode={authMode}
             authError={authError}
+            authLoading={authLoading}
             authNotice={authNotice}
             verificationToken={verificationToken}
             resetForm={resetForm}
@@ -1814,7 +1830,7 @@ function DeleteAccountModal({ loading, onCancel, onConfirm }) {
   );
 }
 
-function AuthPage({ authForm, authMode, authError, authNotice, verificationToken, resetForm, setAuthForm, setResetForm, showAuth, closeAuth, setAuthError, setAuthNotice, submitAuth, verifyEmail, requestPasswordReset, resetPassword }) {
+function AuthPage({ authForm, authMode, authError, authLoading, authNotice, verificationToken, resetForm, setAuthForm, setResetForm, showAuth, closeAuth, setAuthError, setAuthNotice, submitAuth, verifyEmail, requestPasswordReset, resetPassword }) {
   const [showPassword, setShowPassword] = useState(false);
   const isLogin = authMode === "login";
   const isRegister = authMode === "register";
@@ -1831,6 +1847,7 @@ function AuthPage({ authForm, authMode, authError, authNotice, verificationToken
           ? "Войти"
           : "Регистрация";
   const switchMode = (nextMode) => {
+    if (authLoading) return;
     setAuthError("");
     setAuthNotice("");
     showAuth(nextMode, authForm.role);
@@ -1841,7 +1858,7 @@ function AuthPage({ authForm, authMode, authError, authNotice, verificationToken
       <div className="auth-page-card">
         <div className="card-heading-row">
           <h2 id="auth-title">{title}</h2>
-          <button className="icon-close" type="button" aria-label="Закрыть" onClick={closeAuth}>×</button>
+          <button className="icon-close" type="button" aria-label="Закрыть" onClick={closeAuth} disabled={authLoading}>×</button>
         </div>
         {authError && <p className="inline-notice error" role="alert">{authError}</p>}
         {authNotice && <p className="inline-notice" role="status">{authNotice}</p>}
@@ -1850,7 +1867,9 @@ function AuthPage({ authForm, authMode, authError, authNotice, verificationToken
             {verificationToken ? (
               <>
                 <p>Нажмите кнопку ниже, чтобы завершить подтверждение email.</p>
-                <button className="button primary wide" type="button" onClick={verifyEmail}>Подтвердить email</button>
+                <button className="button primary wide" type="button" onClick={verifyEmail} disabled={authLoading}>
+                  {authLoading ? "Подтверждаем..." : "Подтвердить email"}
+                </button>
               </>
             ) : (
               <p>Письмо с подтверждением отправлено. Проверьте входящие и папку Спам, затем откройте ссылку из письма.</p>
@@ -1860,17 +1879,21 @@ function AuthPage({ authForm, authMode, authError, authNotice, verificationToken
           <form onSubmit={requestPasswordReset}>
             <p className="form-copy">Введите email, и мы отправим ссылку для установки нового пароля.</p>
             <Field id="resetEmail" label="Email" type="email" value={resetForm.email} onChange={(value) => setResetForm({ ...resetForm, email: value })} required />
-            <button className="button primary wide" type="submit">Получить ссылку</button>
+            <button className="button primary wide" type="submit" disabled={authLoading}>
+              {authLoading ? "Отправляем..." : "Получить ссылку"}
+            </button>
             <p className="auth-switch">
               Вспомнили пароль?{" "}
-              <button type="button" className="link-button" onClick={() => showAuth("login", authForm.role)}>Войти</button>
+              <button type="button" className="link-button" onClick={() => showAuth("login", authForm.role)} disabled={authLoading}>Войти</button>
             </p>
           </form>
         ) : isReset ? (
           <form onSubmit={resetPassword}>
             <p className="form-copy">Введите новый пароль для вашего аккаунта.</p>
             <PasswordField id="newPassword" label="Новый пароль" value={resetForm.password} onChange={(value) => setResetForm({ ...resetForm, password: value })} showPassword={showPassword} setShowPassword={setShowPassword} required />
-            <button className="button primary wide" type="submit">Сохранить новый пароль</button>
+            <button className="button primary wide" type="submit" disabled={authLoading}>
+              {authLoading ? "Сохраняем..." : "Сохранить новый пароль"}
+            </button>
           </form>
         ) : (
           <form onSubmit={submitAuth}>
@@ -1886,11 +1909,18 @@ function AuthPage({ authForm, authMode, authError, authNotice, verificationToken
             )}
             <Field id="email" label="Email" type="email" value={authForm.email} onChange={(value) => setAuthForm({ ...authForm, email: value })} required />
             <PasswordField id="password" label="Пароль" value={authForm.password} onChange={(value) => setAuthForm({ ...authForm, password: value })} showPassword={showPassword} setShowPassword={setShowPassword} required />
-            {isLogin && <button className="link-button forgot-button" type="button" onClick={() => { setResetForm({ ...emptyResetForm, email: authForm.email }); switchMode("forgot"); }}>Забыли пароль?</button>}
-            <button className="button primary wide" type="submit">{isLogin ? "Войти" : "Создать аккаунт"}</button>
+            {isLogin && <button className="link-button forgot-button" type="button" onClick={() => { setResetForm({ ...emptyResetForm, email: authForm.email }); switchMode("forgot"); }} disabled={authLoading}>Забыли пароль?</button>}
+            {isRegister && authLoading && (
+              <div className="auth-progress" role="status" aria-label="Создаем аккаунт">
+                <span />
+              </div>
+            )}
+            <button className="button primary wide" type="submit" disabled={authLoading}>
+              {authLoading ? (isLogin ? "Входим..." : "Создаем аккаунт...") : (isLogin ? "Войти" : "Создать аккаунт")}
+            </button>
             <p className="auth-switch">
               {isLogin ? "Нет аккаунта?" : "Уже есть аккаунт?"}{" "}
-              <button type="button" className="link-button" onClick={() => switchMode(isLogin ? "register" : "login")}>
+              <button type="button" className="link-button" onClick={() => switchMode(isLogin ? "register" : "login")} disabled={authLoading}>
                 {isLogin ? "Зарегистрироваться" : "Войти"}
               </button>
             </p>

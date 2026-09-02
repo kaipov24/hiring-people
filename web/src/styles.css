@@ -1330,6 +1330,38 @@ main {
   text-decoration: underline;
 }
 
+.link-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.auth-progress {
+  background: #e6efec;
+  border-radius: 999px;
+  height: 0.45rem;
+  margin: 0.2rem 0 0.75rem;
+  overflow: hidden;
+}
+
+.auth-progress span {
+  animation: auth-progress-slide 1.1s ease-in-out infinite;
+  background: linear-gradient(90deg, #245d57, #e6b35a);
+  border-radius: inherit;
+  display: block;
+  height: 100%;
+  width: 42%;
+}
+
+@keyframes auth-progress-slide {
+  0% {
+    transform: translateX(-110%);
+  }
+
+  100% {
+    transform: translateX(250%);
+  }
+}
+
 .forgot-button {
   margin: -0.35rem 0 1rem;
 }
