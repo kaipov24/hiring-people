@@ -70,7 +70,8 @@ jobs:
           AWS_CLI_IMAGE: ${{ vars.AWS_CLI_IMAGE || 'public.ecr.aws/aws-cli/aws-cli:latest' }}
         run: |
           write_env() {
-            printf '%s=%q\n' "$1" "$2"
+            local value="${2//\'/\'\\\'\'}"
+            printf "%s='%s'\n" "$1" "$value"
           }
 
           {

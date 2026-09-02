@@ -990,6 +990,7 @@ function App() {
         <div className="footer-inner">
           <span>{YEAR}</span>
           <span>Некоммерческий сайт для поддержки инклюзивного трудоустройства.</span>
+          <span>По всем вопросам: <a href="mailto:admin@inclusive-hire.org.kg">admin@inclusive-hire.org.kg</a></span>
         </div>
       </footer>
 

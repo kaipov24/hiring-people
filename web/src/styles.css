@@ -1407,6 +1407,11 @@ main {
   max-width: var(--page-width);
 }
 
+.site-footer a {
+  color: #f7efe3;
+  font-weight: 850;
+}
+
 @media (max-width: 960px) {
   h1 {
     font-size: 2.65rem;
