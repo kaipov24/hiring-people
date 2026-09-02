@@ -18,6 +18,33 @@ const isTestUser = (user) => {
   return testUserEmailPatterns.some((pattern) => pattern.test(user.email));
 };
 
+const countUniqueHomeViews = async ({ authenticated }) => {
+  const groups = await ActivityEvent.aggregate([
+    {
+      $match: {
+        type: "page_view",
+        page: "home",
+        authenticated
+      }
+    },
+    {
+      $group: {
+        _id: authenticated ? { $ifNull: ["$user", "$visitorId"] } : "$visitorId"
+      }
+    },
+    {
+      $match: {
+        _id: { $nin: [null, ""] }
+      }
+    },
+    {
+      $count: "total"
+    }
+  ]);
+
+  return groups[0]?.total ?? 0;
+};
+
 const userPayload = (user) => ({
   id: user.id,
   name: user.name,
@@ -142,8 +169,8 @@ export const getActivitySummary = async (_req, res) => {
     CandidateProfile.countDocuments(),
     User.countDocuments({ role: "hiring_manager" }),
     Recruiter.countDocuments(),
-    ActivityEvent.countDocuments({ type: "page_view", page: "home", authenticated: false }),
-    ActivityEvent.countDocuments({ type: "page_view", page: "home", authenticated: true })
+    countUniqueHomeViews({ authenticated: false }),
+    countUniqueHomeViews({ authenticated: true })
   ]);
 
   res.status(200).json({
