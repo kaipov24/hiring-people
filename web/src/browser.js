@@ -31,7 +31,12 @@ export const messengerUrl = ({ messengerType, messenger }) => {
   return username ? `https://t.me/${encodeURIComponent(username)}` : "";
 };
 
-export const authUrl = (mode, role = "candidate") => `${APP_BASE_URL}/#${mode}?role=${role}`;
+export const authUrl = (mode, role = "candidate") => {
+  const params = new URLSearchParams();
+  if (mode === "register" || role === "hiring_manager") params.set("role", role);
+  const query = params.toString();
+  return `${APP_BASE_URL}/${mode}${query ? `?${query}` : ""}`;
+};
 
 export const readStoredSession = () => {
   try {
@@ -62,6 +67,16 @@ export const readEntityRoute = (entity) => {
 };
 
 export const readAuthLink = () => {
+  const pathRoute = window.location.pathname.replace(/^\/+/, "").replace(/\/+$/, "");
+  const pathParams = new URLSearchParams(window.location.search);
+  const pathToken = pathParams.get("token") ?? "";
+  const pathRole = pathParams.get("role") === "hiring_manager" ? "hiring_manager" : "candidate";
+
+  if (pathRoute === "reset-password" && pathToken) return { mode: "reset", token: pathToken };
+  if (pathRoute === "verify-email") return { mode: "verify", token: pathToken };
+  if (pathRoute === "login" || pathRoute === "register") return { mode: pathRoute, role: pathRole };
+  if (pathRoute === "forgot-password") return { mode: "forgot" };
+
   const hash = window.location.hash;
   const [route, query = ""] = hash.slice(1).split("?");
   const params = new URLSearchParams(query || window.location.search);
@@ -69,7 +84,7 @@ export const readAuthLink = () => {
   const role = params.get("role") === "hiring_manager" ? "hiring_manager" : "candidate";
 
   if (route === "reset-password" && token) return { mode: "reset", token };
-  if (route === "verify-email" && token) return { mode: "verify", token };
+  if (route === "verify-email") return { mode: "verify", token };
   if (route === "login" || route === "register") return { mode: route, role };
   return null;
 };

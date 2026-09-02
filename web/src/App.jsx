@@ -80,25 +80,43 @@ function App() {
 
   useEffect(() => {
     document.documentElement.lang = "ru";
-    const authLink = readAuthLink();
-    if (!authLink) return;
 
-    if (authLink.mode === "reset") {
-      setResetForm({ ...emptyResetForm, token: authLink.token });
-      setAuthMode("reset");
+    const syncAuthRoute = () => {
+      const authLink = readAuthLink();
+      if (!authLink || IS_LANDING) {
+        setAuthOpen(false);
+        return;
+      }
+
+      setAuthError("");
+      setAuthNotice("");
+
+      if (authLink.mode === "reset") {
+        setVerificationToken("");
+        setResetForm({ ...emptyResetForm, token: authLink.token });
+        setAuthMode("reset");
+      } else if (authLink.mode === "verify") {
+        setResetForm(emptyResetForm);
+        setVerificationToken(authLink.token);
+        setAuthMode("verify");
+      } else {
+        setVerificationToken("");
+        setResetForm(emptyResetForm);
+        setAuthForm({ ...emptyAuthForm, role: authLink.role ?? "candidate" });
+        setAuthMode(authLink.mode);
+      }
+
       setAuthOpen(true);
-    }
+    };
 
-    if (authLink.mode === "verify") {
-      setVerificationToken(authLink.token);
-      setAuthMode("verify");
-      setAuthOpen(true);
-    }
+    syncAuthRoute();
+    window.addEventListener("popstate", syncAuthRoute);
+    window.addEventListener("hashchange", syncAuthRoute);
 
-    if (!IS_LANDING && (authLink.mode === "login" || authLink.mode === "register")) {
-      showAuth(authLink.mode, authLink.role);
-      window.history.replaceState(null, "", "/");
-    }
+    return () => {
+      window.removeEventListener("popstate", syncAuthRoute);
+      window.removeEventListener("hashchange", syncAuthRoute);
+    };
   }, []);
 
   useEffect(() => {
@@ -302,7 +320,13 @@ function App() {
     }
   };
 
-  const showAuth = (mode, role = "candidate") => {
+  const authPath = (mode, role = "candidate") => {
+    if (mode === "forgot") return "/forgot-password";
+    if (mode === "register") return `/register?role=${role}`;
+    return `/${mode}`;
+  };
+
+  const showAuth = (mode, role = "candidate", options = {}) => {
     setAuthMode(mode);
     setAuthForm({ ...emptyAuthForm, role });
     setAuthError("");
@@ -310,6 +334,16 @@ function App() {
     setVerificationToken("");
     setResetForm({ ...emptyResetForm, email: authForm.email });
     setAuthOpen(true);
+    if (options.writeHistory !== false) {
+      window.history.pushState(null, "", authPath(mode, role));
+    }
+  };
+
+  const closeAuth = () => {
+    setAuthOpen(false);
+    setAuthError("");
+    setAuthNotice("");
+    window.history.pushState(null, "", "/");
   };
 
   const clearPrivateState = () => {
@@ -355,11 +389,12 @@ function App() {
         setVerificationToken("");
         setAuthNotice(data.message ?? "Мы отправили ссылку для подтверждения email. Проверьте входящие и папку Спам.");
         setAuthMode("verify");
+        window.history.replaceState(null, "", "/verify-email");
         return;
       }
 
       setSession(data);
-      setAuthOpen(false);
+      closeAuth();
     } catch (error) {
       setAuthError(error.message);
     }
@@ -376,7 +411,7 @@ function App() {
         body: JSON.stringify({ token: verificationToken })
       });
       setSession(data);
-      setAuthOpen(false);
+      closeAuth();
     } catch (error) {
       setAuthError(error.message);
     }
@@ -415,7 +450,7 @@ function App() {
       setAuthForm({ ...authForm, email: resetForm.email, password: "" });
       setAuthMode("login");
       setResetForm(emptyResetForm);
-      window.history.replaceState(null, "", "/");
+      window.history.replaceState(null, "", "/login");
     } catch (error) {
       setAuthError(error.message);
     }
@@ -782,6 +817,8 @@ function App() {
     }
   };
 
+  const showAuthPage = !IS_LANDING && authOpen && !user;
+
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">К содержанию</a>
@@ -798,98 +835,121 @@ function App() {
       />
 
       <main id="main-content">
-        {page !== "candidate" && <Hero user={user} isCandidate={isCandidate} isManager={isManager} isAdmin={isAdmin} page={page} showAuth={showAuth} setPage={setPage} appHealth={appHealth} />}
-        {!user && <PublicHome />}
-        {isAdmin && (page === "adminUsers" || page === "adminActivity") && (
-          <AdminPage
-            page={page}
-            users={adminUsers}
-            activity={adminActivity}
-            notice={adminNotice}
-            actionState={adminActionState}
-            loadUsers={loadAdminUsers}
-            loadActivity={loadAdminActivity}
-            sendPasswordReset={sendAdminPasswordReset}
-            verifyUserEmail={verifyAdminUserEmail}
-            toggleUserDisabled={toggleAdminUserDisabled}
-            deleteUser={deleteAdminUser}
+        {showAuthPage ? (
+          <AuthPage
+            authForm={authForm}
+            authMode={authMode}
+            authError={authError}
+            authNotice={authNotice}
+            verificationToken={verificationToken}
+            resetForm={resetForm}
+            setAuthForm={setAuthForm}
+            setResetForm={setResetForm}
+            showAuth={showAuth}
+            closeAuth={closeAuth}
+            setAuthError={setAuthError}
+            setAuthNotice={setAuthNotice}
+            submitAuth={submitAuth}
+            verifyEmail={verifyEmail}
+            requestPasswordReset={requestPasswordReset}
+            resetPassword={resetPassword}
           />
+        ) : (
+          <>
+            {page !== "candidate" && <Hero user={user} isCandidate={isCandidate} isManager={isManager} isAdmin={isAdmin} page={page} showAuth={showAuth} setPage={setPage} appHealth={appHealth} />}
+            {!user && <PublicHome />}
+            {isAdmin && (page === "adminUsers" || page === "adminActivity") && (
+              <AdminPage
+                page={page}
+                users={adminUsers}
+                activity={adminActivity}
+                notice={adminNotice}
+                actionState={adminActionState}
+                loadUsers={loadAdminUsers}
+                loadActivity={loadAdminActivity}
+                sendPasswordReset={sendAdminPasswordReset}
+                verifyUserEmail={verifyAdminUserEmail}
+                toggleUserDisabled={toggleAdminUserDisabled}
+                deleteUser={deleteAdminUser}
+              />
+            )}
+            {isManager && (page === "directory" || page === "candidate") && (
+              <DirectoryPage
+                page={page}
+                filters={filters}
+                setFilters={setFilters}
+                loadEmployees={loadEmployees}
+                employees={employees}
+                selectedProfile={selectedProfile}
+                setSelectedProfile={setSelectedProfile}
+                openEmployeeProfile={openEmployeeProfile}
+                downloadCandidateCv={downloadCandidateCv}
+                updateStatus={updateStatus}
+                setPage={setPage}
+                canManageCandidates
+              />
+            )}
+            {isManager && page === "recruiter" && (
+              <RecruiterPage
+                recruiterForm={recruiterForm}
+                setRecruiterForm={setRecruiterForm}
+                recruiterProfile={recruiterProfile}
+                recruiterEditing={recruiterEditing}
+                setRecruiterEditing={setRecruiterEditing}
+                saveRecruiter={saveRecruiter}
+                notice={formNotice}
+              />
+            )}
+            {isCandidate && page === "profile" && (
+              <ProfilePage
+                user={user}
+                accountForm={accountForm}
+                setAccountForm={setAccountForm}
+                profileForm={profileForm}
+                setProfileForm={setProfileForm}
+                profileLists={profileLists}
+                candidateProfile={candidateProfile}
+                saveProfile={saveProfile}
+                uploadCv={uploadCv}
+                profileViews={profileViews}
+                profileViewsLoaded={profileViewsLoaded}
+                profileViewsLoading={profileViewsLoading}
+                loadProfileViews={loadProfileViews}
+                downloadCandidateCv={downloadCandidateCv}
+                openDeleteAccount={() => setDeleteAccountOpen(true)}
+                notice={formNotice}
+              />
+            )}
+            {isCandidate && (page === "candidates" || page === "candidate") && (
+              <DirectoryPage
+                page={page}
+                filters={filters}
+                setFilters={setFilters}
+                loadEmployees={loadEmployees}
+                employees={employees}
+                selectedProfile={selectedProfile}
+                setSelectedProfile={setSelectedProfile}
+                openEmployeeProfile={openEmployeeProfile}
+                downloadCandidateCv={downloadCandidateCv}
+                setPage={setPage}
+                returnPage="candidates"
+                canManageCandidates={false}
+              />
+            )}
+            {user && page === "recruiters" && (
+              <RecruitersPage
+                recruiters={recruiters}
+                selectedRecruiter={selectedRecruiter}
+                setSelectedRecruiter={setSelectedRecruiter}
+                openRecruiter={openRecruiter}
+                loadRecruiters={loadRecruiters}
+                setPage={setPage}
+                notice={formNotice}
+              />
+            )}
+            <LegalNote />
+          </>
         )}
-        {isManager && (page === "directory" || page === "candidate") && (
-          <DirectoryPage
-            page={page}
-            filters={filters}
-            setFilters={setFilters}
-            loadEmployees={loadEmployees}
-            employees={employees}
-            selectedProfile={selectedProfile}
-            setSelectedProfile={setSelectedProfile}
-            openEmployeeProfile={openEmployeeProfile}
-            downloadCandidateCv={downloadCandidateCv}
-            updateStatus={updateStatus}
-            setPage={setPage}
-            canManageCandidates
-          />
-        )}
-        {isManager && page === "recruiter" && (
-          <RecruiterPage
-            recruiterForm={recruiterForm}
-            setRecruiterForm={setRecruiterForm}
-            recruiterProfile={recruiterProfile}
-            recruiterEditing={recruiterEditing}
-            setRecruiterEditing={setRecruiterEditing}
-            saveRecruiter={saveRecruiter}
-            notice={formNotice}
-          />
-        )}
-        {isCandidate && page === "profile" && (
-          <ProfilePage
-            user={user}
-            accountForm={accountForm}
-            setAccountForm={setAccountForm}
-            profileForm={profileForm}
-            setProfileForm={setProfileForm}
-            profileLists={profileLists}
-            candidateProfile={candidateProfile}
-            saveProfile={saveProfile}
-            uploadCv={uploadCv}
-            profileViews={profileViews}
-            profileViewsLoaded={profileViewsLoaded}
-            profileViewsLoading={profileViewsLoading}
-            loadProfileViews={loadProfileViews}
-            downloadCandidateCv={downloadCandidateCv}
-            openDeleteAccount={() => setDeleteAccountOpen(true)}
-            notice={formNotice}
-          />
-        )}
-        {isCandidate && (page === "candidates" || page === "candidate") && (
-          <DirectoryPage
-            page={page}
-            filters={filters}
-            setFilters={setFilters}
-            loadEmployees={loadEmployees}
-            employees={employees}
-            selectedProfile={selectedProfile}
-            setSelectedProfile={setSelectedProfile}
-            openEmployeeProfile={openEmployeeProfile}
-            downloadCandidateCv={downloadCandidateCv}
-            setPage={setPage}
-            returnPage="candidates"
-            canManageCandidates={false}
-          />
-        )}
-        {user && page === "recruiters" && (
-          <RecruitersPage
-            recruiters={recruiters}
-            selectedRecruiter={selectedRecruiter}
-            setSelectedRecruiter={setSelectedRecruiter}
-            openRecruiter={openRecruiter}
-            loadRecruiters={loadRecruiters}
-            setPage={setPage}
-            notice={formNotice}
-          />
-        )}
-        <LegalNote />
       </main>
 
       <footer className="site-footer">
@@ -899,26 +959,6 @@ function App() {
         </div>
       </footer>
 
-      {!IS_LANDING && authOpen && (
-        <AuthModal
-          authForm={authForm}
-          authMode={authMode}
-          authError={authError}
-          authNotice={authNotice}
-          verificationToken={verificationToken}
-          resetForm={resetForm}
-          setAuthForm={setAuthForm}
-          setResetForm={setResetForm}
-          setAuthMode={setAuthMode}
-          setAuthOpen={setAuthOpen}
-          setAuthError={setAuthError}
-          setAuthNotice={setAuthNotice}
-          submitAuth={submitAuth}
-          verifyEmail={verifyEmail}
-          requestPasswordReset={requestPasswordReset}
-          resetPassword={resetPassword}
-        />
-      )}
       {!IS_LANDING && deleteAccountOpen && (
         <DeleteAccountModal
           loading={deleteAccountLoading}
@@ -1773,7 +1813,7 @@ function DeleteAccountModal({ loading, onCancel, onConfirm }) {
   );
 }
 
-function AuthModal({ authForm, authMode, authError, authNotice, verificationToken, resetForm, setAuthForm, setResetForm, setAuthMode, setAuthOpen, setAuthError, setAuthNotice, submitAuth, verifyEmail, requestPasswordReset, resetPassword }) {
+function AuthPage({ authForm, authMode, authError, authNotice, verificationToken, resetForm, setAuthForm, setResetForm, showAuth, closeAuth, setAuthError, setAuthNotice, submitAuth, verifyEmail, requestPasswordReset, resetPassword }) {
   const [showPassword, setShowPassword] = useState(false);
   const isLogin = authMode === "login";
   const isRegister = authMode === "register";
@@ -1790,17 +1830,17 @@ function AuthModal({ authForm, authMode, authError, authNotice, verificationToke
           ? "Войти"
           : "Регистрация";
   const switchMode = (nextMode) => {
-    setAuthMode(nextMode);
     setAuthError("");
     setAuthNotice("");
+    showAuth(nextMode, authForm.role);
   };
 
   return (
-    <div className="modal-backdrop">
-      <section className="modal" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+    <section className="auth-page" aria-labelledby="auth-title">
+      <div className="auth-page-card">
         <div className="card-heading-row">
           <h2 id="auth-title">{title}</h2>
-          <button className="icon-close" type="button" aria-label="Закрыть" onClick={() => setAuthOpen(false)}>×</button>
+          <button className="icon-close" type="button" aria-label="Закрыть" onClick={closeAuth}>×</button>
         </div>
         {authError && <p className="inline-notice error" role="alert">{authError}</p>}
         {authNotice && <p className="inline-notice" role="status">{authNotice}</p>}
@@ -1822,7 +1862,7 @@ function AuthModal({ authForm, authMode, authError, authNotice, verificationToke
             <button className="button primary wide" type="submit">Получить ссылку</button>
             <p className="auth-switch">
               Вспомнили пароль?{" "}
-              <button type="button" className="link-button" onClick={() => switchMode("login")}>Войти</button>
+              <button type="button" className="link-button" onClick={() => showAuth("login", authForm.role)}>Войти</button>
             </p>
           </form>
         ) : isReset ? (
@@ -1855,8 +1895,8 @@ function AuthModal({ authForm, authMode, authError, authNotice, verificationToke
             </p>
           </form>
         )}
-      </section>
-    </div>
+      </div>
+    </section>
   );
 }
 

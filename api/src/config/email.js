@@ -71,7 +71,7 @@ export const sendTestEmail = async ({ to }) => {
 };
 
 export const sendVerificationEmail = async ({ to, name, token }) => {
-  const url = `${getPublicAppUrl()}/#verify-email?token=${token}`;
+  const url = `${getPublicAppUrl()}/verify-email?token=${token}`;
 
   await sendEmail({
     to,
@@ -82,7 +82,7 @@ export const sendVerificationEmail = async ({ to, name, token }) => {
 };
 
 export const sendPasswordResetEmail = async ({ to, name, token }) => {
-  const url = `${getPublicAppUrl()}/#reset-password?token=${token}`;
+  const url = `${getPublicAppUrl()}/reset-password?token=${token}`;
 
   await sendEmail({
     to,

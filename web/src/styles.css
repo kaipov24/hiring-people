@@ -1214,7 +1214,8 @@ main {
   z-index: 60;
 }
 
-.modal {
+.modal,
+.auth-page-card {
   background: #ffffff;
   border: 1px solid #e4e1da;
   border-radius: 18px;
@@ -1227,11 +1228,24 @@ main {
   width: min(100%, 34rem);
 }
 
-.modal .card-heading-row {
+.auth-page {
+  display: grid;
+  justify-items: center;
+  min-height: 42rem;
+  padding: 3rem 1rem;
+}
+
+.auth-page-card {
+  align-self: start;
+}
+
+.modal .card-heading-row,
+.auth-page-card .card-heading-row {
   padding-right: 2.25rem;
 }
 
-.modal .inline-notice {
+.modal .inline-notice,
+.auth-page-card .inline-notice {
   margin: 0.75rem 0 1rem;
 }
 
