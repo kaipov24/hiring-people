@@ -25,18 +25,19 @@ import {
 import { seoForAppState, setDocumentSeo } from "./seo.js";
 
 function App() {
+  const initialAuthLink = !IS_LANDING ? readAuthLink() : null;
   const [session, setSession] = useState(IS_LANDING ? null : readStoredSession);
   const [page, setPageState] = useState("home");
   const [appHealth, setAppHealth] = useState(IS_LANDING ? "checking" : "online");
-  const [authOpen, setAuthOpen] = useState(false);
-  const [authMode, setAuthMode] = useState("login");
-  const [authForm, setAuthForm] = useState(emptyAuthForm);
+  const [authOpen, setAuthOpen] = useState(Boolean(initialAuthLink));
+  const [authMode, setAuthMode] = useState(initialAuthLink?.mode ?? "login");
+  const [authForm, setAuthForm] = useState({ ...emptyAuthForm, role: initialAuthLink?.role ?? "candidate" });
   const [authError, setAuthError] = useState("");
   const [authNotice, setAuthNotice] = useState("");
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [deleteAccountLoading, setDeleteAccountLoading] = useState(false);
-  const [verificationToken, setVerificationToken] = useState("");
-  const [resetForm, setResetForm] = useState(emptyResetForm);
+  const [verificationToken, setVerificationToken] = useState(initialAuthLink?.mode === "verify" ? initialAuthLink.token : "");
+  const [resetForm, setResetForm] = useState(initialAuthLink?.mode === "reset" ? { ...emptyResetForm, token: initialAuthLink.token } : emptyResetForm);
   const [formNotice, setFormNotice] = useState("");
   const [accountForm, setAccountForm] = useState(emptyAccountForm);
   const [profileForm, setProfileForm] = useState(emptyProfileForm);
