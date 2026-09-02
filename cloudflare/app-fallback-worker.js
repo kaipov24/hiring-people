@@ -20,6 +20,18 @@ const landingRedirectUrl = (request, landing) => {
   return landingUrl;
 };
 
+const shouldRedirectToLanding = (request, responseStatus) => {
+  const url = new URL(request.url);
+  if (url.pathname.startsWith("/api/")) return false;
+  if (request.method !== "GET" && request.method !== "HEAD") return false;
+  return tunnelErrorStatuses.has(responseStatus);
+};
+
+const offlineApiResponse = () => Response.json(
+  { error: { message: "Приложение временно недоступно. Попробуйте позже.", status: 503 } },
+  { status: 503 }
+);
+
 export default {
   async fetch(request, env) {
     const origin = env.APP_ORIGIN_URL || DEFAULT_ORIGIN_URL;
@@ -28,11 +40,18 @@ export default {
     try {
       const originRequest = new Request(targetUrl(request, origin), request);
       const response = await fetch(originRequest);
-      if (tunnelErrorStatuses.has(response.status)) {
+      if (shouldRedirectToLanding(request, response.status)) {
         return Response.redirect(landingRedirectUrl(request, landing), 302);
       }
       return response;
     } catch {
+      const url = new URL(request.url);
+      if (url.pathname.startsWith("/api/")) {
+        return offlineApiResponse();
+      }
+      if (request.method !== "GET" && request.method !== "HEAD") {
+        return offlineApiResponse();
+      }
       return Response.redirect(landingRedirectUrl(request, landing), 302);
     }
   }
