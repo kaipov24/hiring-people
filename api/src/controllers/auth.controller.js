@@ -4,6 +4,7 @@ import { isConfiguredAdmin } from "../config/admin.js";
 import { sendPasswordResetEmail, sendVerificationEmail } from "../config/email.js";
 import { User } from "../models/user.model.js";
 import { deleteUserAndRelatedData } from "../services/user-cleanup.service.js";
+import { auditLog } from "../utils/audit-log.js";
 import { signAccessToken } from "../utils/jwt.js";
 import { createEmailVerificationToken, createPasswordResetToken } from "../utils/tokens.js";
 
@@ -78,6 +79,12 @@ export const register = async (req, res) => {
         name: existingUser.name,
         token: verificationToken
       });
+      auditLog("registration_verification_resent", {
+        email: existingUser.email,
+        userId: existingUser.id,
+        role: existingUser.role,
+        ip: req.ip
+      });
 
       res.status(200).json({
         user: publicUser(existingUser),
@@ -87,6 +94,12 @@ export const register = async (req, res) => {
       return;
     }
 
+    auditLog("registration_failed", {
+      email,
+      role,
+      reason: "email_exists",
+      ip: req.ip
+    });
     const error = new Error("Аккаунт с таким email уже существует");
     error.status = 409;
     throw error;
@@ -104,6 +117,12 @@ export const register = async (req, res) => {
   });
 
   sendVerificationInBackground({ to: email, name, token: verification.emailVerificationToken });
+  auditLog("registration_created", {
+    email: user.email,
+    userId: user.id,
+    role: user.role,
+    ip: req.ip
+  });
 
   res.status(201).json({
     user: publicUser(user),
@@ -117,6 +136,11 @@ export const login = async (req, res) => {
   const user = await User.findOne({ email });
 
   if (!user) {
+    auditLog("login_failed", {
+      email,
+      reason: "email_not_found",
+      ip: req.ip
+    });
     const error = new Error("Аккаунт с таким email не найден");
     error.status = 401;
     throw error;
@@ -125,23 +149,47 @@ export const login = async (req, res) => {
   const passwordMatches = await bcrypt.compare(password, user.passwordHash);
 
   if (!passwordMatches) {
+    auditLog("login_failed", {
+      email,
+      userId: user.id,
+      reason: "wrong_password",
+      ip: req.ip
+    });
     const error = new Error("Неверный email или пароль");
     error.status = 401;
     throw error;
   }
 
   if (user.emailVerified === false) {
+    auditLog("login_failed", {
+      email,
+      userId: user.id,
+      reason: "email_not_verified",
+      ip: req.ip
+    });
     const error = new Error("Подтвердите email перед входом");
     error.status = 403;
     throw error;
   }
 
   if (user.disabledAt) {
+    auditLog("login_failed", {
+      email,
+      userId: user.id,
+      reason: "account_disabled",
+      ip: req.ip
+    });
     const error = new Error("Аккаунт отключен. Обратитесь к администратору.");
     error.status = 403;
     throw error;
   }
 
+  auditLog("login_success", {
+    email: user.email,
+    userId: user.id,
+    role: user.role,
+    ip: req.ip
+  });
   res.status(200).json({
     user: publicUser(user),
     token: signAccessToken(user)
@@ -261,6 +309,12 @@ export const updateMe = async (req, res) => {
     }
   );
 
+  auditLog("account_saved", {
+    email: user.email,
+    userId: user.id,
+    role: user.role,
+    ip: req.ip
+  });
   res.status(200).json({
     user: publicUser(user)
   });

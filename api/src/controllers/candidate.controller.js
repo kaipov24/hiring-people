@@ -3,6 +3,7 @@ import { CandidateProfile } from "../models/candidate-profile.model.js";
 import { CandidateStatus, candidateStatuses } from "../models/candidate-status.model.js";
 import { Recruiter } from "../models/recruiter.model.js";
 import { ProfileView } from "../models/profile-view.model.js";
+import { auditLog } from "../utils/audit-log.js";
 
 const unavailableForWork = "Не ищу работу сейчас";
 
@@ -199,6 +200,14 @@ export const upsertMyCandidateProfile = async (req, res) => {
     }
   ).populate("user", "name email role");
 
+  auditLog("candidate_profile_saved", {
+    email: profile.user?.email,
+    userId: req.user.id,
+    profileId: profile.id,
+    availability: profile.availability,
+    employmentFormat: profile.employmentFormat,
+    ip: req.ip
+  });
   res.status(200).json({
     candidate: profilePayload(profile)
   });
@@ -243,6 +252,15 @@ export const uploadMyCv = async (req, res) => {
 
   await deleteCvFile(existingProfile?.cv);
 
+  auditLog("resume_uploaded", {
+    email: profile.user?.email,
+    userId: req.user.id,
+    profileId: profile.id,
+    storageDriver: profile.cv?.storageDriver,
+    fileSize: profile.cv?.size,
+    mimeType: profile.cv?.mimeType,
+    ip: req.ip
+  });
   res.status(200).json({
     candidate: profilePayload(profile)
   });
