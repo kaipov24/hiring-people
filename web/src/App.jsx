@@ -97,6 +97,7 @@ function App() {
 
     if (!IS_LANDING && (authLink.mode === "login" || authLink.mode === "register")) {
       showAuth(authLink.mode, authLink.role);
+      window.history.replaceState(null, "", "/");
     }
   }, []);
 
@@ -414,7 +415,7 @@ function App() {
       setAuthForm({ ...authForm, email: resetForm.email, password: "" });
       setAuthMode("login");
       setResetForm(emptyResetForm);
-      window.history.replaceState(null, "", "#home");
+      window.history.replaceState(null, "", "/");
     } catch (error) {
       setAuthError(error.message);
     }
