@@ -1539,6 +1539,8 @@ const profileSnapshot = ({ user, accountForm, profileForm, candidateProfile }) =
   savedMessenger: (candidateProfile?.contacts?.messenger ?? "").trim()
 });
 
+const unavailableForWork = "Не ищу работу сейчас";
+
 function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfileForm, profileLists, candidateProfile, saveProfile, uploadCv, profileViews, profileViewsLoaded, profileViewsLoading, loadProfileViews, downloadCandidateCv, openDeleteAccount, notice }) {
   const snapshot = profileSnapshot({ user, accountForm, profileForm, candidateProfile });
   const currentProfileState = {
@@ -1574,6 +1576,7 @@ function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfil
   const profileChanged = JSON.stringify(currentProfileState) !== JSON.stringify(savedProfileState);
   const profileSaved = notice === "Профиль сохранен." && !profileChanged;
   const topNotice = notice && notice !== "Профиль сохранен." ? notice : "";
+  const profileHidden = profileForm.availability === unavailableForWork;
   const preview = {
     user,
     ...candidateProfile,
@@ -1655,6 +1658,11 @@ function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfil
           <div className="profile-save-block">
             <button className="button primary wide" type="submit" disabled={!profileChanged}>Сохранить профиль</button>
             {profileSaved && <p className="save-status" role="status">Профиль сохранен.</p>}
+            {profileHidden && (
+              <p className="inline-notice profile-visibility-notice" role="status">
+                Ваше резюме не видно работодателям, потому что выбран статус «Не ищу работу сейчас».
+              </p>
+            )}
           </div>
         </form>
         <aside className="profile-side">

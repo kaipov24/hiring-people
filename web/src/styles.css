@@ -821,6 +821,10 @@ main {
   text-align: center;
 }
 
+.profile-visibility-notice {
+  text-align: center;
+}
+
 .edit-card,
 .profile-card,
 .recruiter-card {

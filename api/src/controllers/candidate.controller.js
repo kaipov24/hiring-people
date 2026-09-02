@@ -4,6 +4,8 @@ import { CandidateStatus, candidateStatuses } from "../models/candidate-status.m
 import { Recruiter } from "../models/recruiter.model.js";
 import { ProfileView } from "../models/profile-view.model.js";
 
+const unavailableForWork = "Не ищу работу сейчас";
+
 const cvPayload = (cv) => {
   if (!cv?.originalName) return null;
 
@@ -39,21 +41,55 @@ const profilePayload = (profile) => ({
 
 const splitQueryList = (value) => {
   return String(value ?? "")
-    .split(",")
+    .split(/[,\s.]+/)
     .map((item) => item.trim())
     .filter(Boolean);
 };
 
-const escapeRegex = (value) => {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const uniqueTokens = (...values) => {
+  return [...new Set(values.flatMap(splitQueryList).map((item) => item.toLocaleLowerCase("ru-RU")))];
+};
+
+const searchableText = (profile) => [
+  profile.user?.name,
+  profile.headline,
+  profile.summary,
+  profile.location,
+  profile.portfolio,
+  profile.availability,
+  profile.employmentFormat,
+  profile.accessibilityPreferences,
+  ...(profile.skills ?? []),
+  ...(profile.languages ?? [])
+]
+  .filter(Boolean)
+  .join(" ")
+  .toLocaleLowerCase("ru-RU");
+
+const searchableWords = (profile) => uniqueTokens(searchableText(profile));
+
+const scoreTokens = (profile, tokens) => {
+  if (tokens.length === 0) return 0;
+
+  const text = searchableText(profile);
+  const words = searchableWords(profile);
+  const exactMatches = tokens.filter((token) => words.includes(token)).length;
+  const partialMatches = tokens.filter((token) => text.includes(token)).length;
+
+  if (exactMatches === tokens.length) return 300 + exactMatches;
+  if (partialMatches === tokens.length) return 200 + partialMatches;
+  if (partialMatches > 0) return 100 + partialMatches;
+  return -1;
 };
 
 export const listCandidates = async (req, res) => {
-  const filters = {};
+  const filters = {
+    availability: { $ne: unavailableForWork }
+  };
   const location = String(req.query.location ?? "").trim();
   const employmentFormat = String(req.query.employmentFormat ?? "").trim();
-  const skills = splitQueryList(req.query.skills);
-  const languages = splitQueryList(req.query.languages);
+  const searchTokens = uniqueTokens(req.query.query, req.query.skills);
+  const languageTokens = uniqueTokens(req.query.languages);
 
   if (location) {
     filters.location = { $regex: location, $options: "i" };
@@ -63,22 +99,28 @@ export const listCandidates = async (req, res) => {
     filters.employmentFormat = employmentFormat;
   }
 
-  if (skills.length > 0) {
-    filters.skills = { $all: skills.map((skill) => new RegExp(`^${escapeRegex(skill)}$`, "i")) };
-  }
-
-  if (languages.length > 0) {
-    filters.languages = {
-      $all: languages.map((language) => new RegExp(`^${escapeRegex(language)}$`, "i"))
-    };
-  }
-
   const profiles = await CandidateProfile.find(filters)
     .populate("user", "name email role")
     .sort({ updatedAt: -1 });
 
+  const scoredProfiles = profiles
+    .map((profile) => {
+      const searchScore = scoreTokens(profile, searchTokens);
+      const languageScore = scoreTokens(profile, languageTokens);
+      return {
+        profile,
+        score: searchScore + languageScore
+      };
+    })
+    .filter(({ profile }) => {
+      if (searchTokens.length > 0 && scoreTokens(profile, searchTokens) < 0) return false;
+      if (languageTokens.length > 0 && scoreTokens(profile, languageTokens) < 0) return false;
+      return true;
+    })
+    .sort((left, right) => right.score - left.score || right.profile.updatedAt - left.profile.updatedAt);
+
   res.status(200).json({
-    candidates: profiles.map(profilePayload)
+    candidates: scoredProfiles.map(({ profile }) => profilePayload(profile))
   });
 };
 
