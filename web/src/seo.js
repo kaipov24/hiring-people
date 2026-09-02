@@ -16,7 +16,9 @@ const setCanonical = (url) => {
 };
 
 export const setDocumentSeo = ({ title, description, robots, canonicalPath }) => {
-  const canonicalUrl = `${PUBLIC_SITE_URL}${canonicalPath}`;
+  const rawPath = canonicalPath || "/";
+  const path = rawPath.startsWith("/") ? rawPath : `/${rawPath}`;
+  const canonicalUrl = `${PUBLIC_SITE_URL}${path}`;
   document.title = title;
   setMetaContent("meta[name='description']", description);
   setMetaContent("meta[name='robots']", robots);

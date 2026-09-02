@@ -8,12 +8,16 @@ const normalizeSiteUrl = (value) => {
 const siteUrl = normalizeSiteUrl(process.env.VITE_PUBLIC_SITE_URL ?? process.env.PUBLIC_SITE_URL);
 const buildDate = new Date().toISOString();
 const basePath = process.env.VITE_BASE_PATH || "/";
+const deployTarget = process.env.VITE_DEPLOY_TARGET ?? "app";
+const isLandingBuild = deployTarget === "landing";
+const robotsDirective = isLandingBuild ? "index,follow,max-image-preview:large" : "noindex,nofollow";
 
 const seoPlugin = () => ({
   name: "inclusive-hire-seo",
   transformIndexHtml(html) {
     return html
       .replaceAll("%PUBLIC_SITE_URL%", siteUrl)
+      .replaceAll("%ROBOTS_DIRECTIVE%", robotsDirective)
       .replaceAll("%BUILD_DATE%", buildDate);
   },
   generateBundle() {
@@ -26,16 +30,22 @@ const seoPlugin = () => ({
     this.emitFile({
       type: "asset",
       fileName: "robots.txt",
-      source: [
-        "User-agent: *",
-        "Allow: /",
-        "Disallow: /api/",
-        "Disallow: /uploads/",
-        "Disallow: /candidates/",
-        "Disallow: /recruiters/",
-        `Sitemap: ${siteUrl}/sitemap.xml`,
-        ""
-      ].join("\n")
+      source: isLandingBuild
+        ? [
+            "User-agent: *",
+            "Allow: /",
+            "Disallow: /api/",
+            "Disallow: /uploads/",
+            "Disallow: /candidates/",
+            "Disallow: /recruiters/",
+            `Sitemap: ${siteUrl}/sitemap.xml`,
+            ""
+          ].join("\n")
+        : [
+            "User-agent: *",
+            "Disallow: /",
+            ""
+          ].join("\n")
     });
 
     this.emitFile({

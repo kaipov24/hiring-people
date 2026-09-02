@@ -10,7 +10,7 @@ export const VISITOR_STORAGE_KEY = "inclusive-hire-visitor";
 export const publicSeo = {
   title: "Найм людей с инвалидностью в Бишкеке | inclusive-hire",
   description: "inclusive-hire Бишкек — некоммерческая платформа инклюзивного найма в Кыргызстане: работодатели могут нанять человека с инвалидностью, соискатели загружают резюме и показывают навыки.",
-  robots: "index,follow",
+  robots: IS_LANDING ? "index,follow,max-image-preview:large" : "noindex,nofollow",
   canonicalPath: "/"
 };
 
