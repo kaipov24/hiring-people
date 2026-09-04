@@ -119,6 +119,9 @@ services:
       dockerfile: Dockerfile
       args:
         PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-http://localhost:8080}
+        VITE_APP_BASE_URL: ${VITE_APP_BASE_URL:-http://localhost:8080}
+        VITE_DEPLOY_TARGET: ${VITE_DEPLOY_TARGET:-app}
+        VITE_BASE_PATH: ${VITE_BASE_PATH:-/}
     restart: unless-stopped
     networks:
       - inclusive_hire_net

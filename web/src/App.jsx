@@ -1043,7 +1043,7 @@ function Header({ user, page, isCandidate, isManager, isAdmin, setPage, showAuth
 function Hero({ user, isCandidate, isManager, isAdmin, page, showAuth, setPage, appHealth }) {
   const publicHero = !user;
   const title = publicHero
-    ? "Найм людей с инвалидностью в Бишкеке"
+    ? "Найм людей с инвалидностью в Кыргызстане"
     : isAdmin
       ? page === "adminUsers"
         ? "Пользователи"
@@ -1327,7 +1327,7 @@ function DirectoryPage({ page, filters, setFilters, loadEmployees, employees, se
           <h3>Фильтры</h3>
           <Field id="query" label="Поиск по специализации и навыкам" value={filters.query} onChange={(value) => setFilters({ ...filters, query: value })} placeholder="Frontend, React" />
           <SpecializationSelect id="filterSpecialization" label="Специализация" value={filters.specialization} onChange={(value) => setFilters({ ...filters, specialization: value })} emptyLabel="Любая" />
-          <Field id="location" label="Локация" value={filters.location} onChange={(value) => setFilters({ ...filters, location: value })} placeholder="Бишкек, Ош, удаленно" />
+          <Field id="location" label="Локация" value={filters.location} onChange={(value) => setFilters({ ...filters, location: value })} placeholder="Кыргызстан, удаленно" />
           <DropdownSelect id="filterEmploymentFormat" label="Формат работы" value={filters.employmentFormat} onChange={(value) => setFilters({ ...filters, employmentFormat: value })} options={employmentFormatOptions} emptyLabel="Любой" allowClear />
           <SkillMultiSelect id="skills" label="Навыки" value={filters.skills} onChange={(value) => setFilters({ ...filters, skills: value })} emptyLabel="Любые навыки" />
           <Field id="languages" label="Языки" value={filters.languages} onChange={(value) => setFilters({ ...filters, languages: value })} placeholder="русский, кыргызча" />
@@ -1641,7 +1641,7 @@ function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfil
             <SkillMultiSelect id="skills" label="Навыки" value={profileForm.skills} onChange={(value) => setProfileForm({ ...profileForm, skills: value })} emptyLabel="Искать навыки" />
             <Field id="languages" label="Языки через запятую" value={profileForm.languages} onChange={(value) => setProfileForm({ ...profileForm, languages: value })} />
             <div className="field-pair">
-              <Field id="location" label="Город" value={profileForm.location} onChange={(value) => setProfileForm({ ...profileForm, location: value })} placeholder="Бишкек, Ош, Нарын" />
+              <Field id="location" label="Город" value={profileForm.location} onChange={(value) => setProfileForm({ ...profileForm, location: value })} placeholder="Кыргызстан, удаленно" />
               <DropdownSelect id="employmentFormat" label="Формат работы" value={profileForm.employmentFormat} onChange={(value) => setProfileForm({ ...profileForm, employmentFormat: value || "remote" })} options={employmentFormatOptions} emptyLabel="Любой" />
             </div>
             <Field id="portfolio" label="Портфолио или ссылка на работы" value={profileForm.portfolio} onChange={(value) => setProfileForm({ ...profileForm, portfolio: value })} placeholder="https://..." />
