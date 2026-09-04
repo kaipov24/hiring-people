@@ -20,6 +20,7 @@ const router = Router();
 
 const profileSchema = z.object({
   headline: z.string().trim().max(160).optional(),
+  specialization: z.string().trim().max(120).optional(),
   summary: z.string().trim().max(3000).optional(),
   skills: z.array(z.string().trim().min(1).max(80)).max(50).default([]),
   languages: z.array(z.string().trim().min(1).max(80)).max(20).default([]),

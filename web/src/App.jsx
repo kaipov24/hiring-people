@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import { authHeaders, request } from "./api.js";
 import { authUrl, contactInfo, externalUrl, messengerUrl, readAuthLink, readCandidateRoute, readRecruiterRoute, readStoredSession, readVisitorId, toList } from "./browser.js";
@@ -18,6 +18,8 @@ import {
   roleLabels,
   sampleCandidates,
   SESSION_STORAGE_KEY,
+  skillOptions,
+  specializationOptions,
   statusLabels,
   statuses,
   YEAR
@@ -240,6 +242,7 @@ function App() {
         setCandidateProfile(profile);
         setProfileForm({
           headline: profile.headline ?? "",
+          specialization: profile.specialization ?? "",
           summary: profile.summary ?? "",
           skills: (profile.skills ?? []).join(", "),
           languages: (profile.languages ?? []).join(", "),
@@ -525,6 +528,7 @@ function App() {
             ...profileForm,
             skills: profileLists.skills,
             languages: profileLists.languages,
+            specialization: profileForm.specialization,
             employmentFormat: profileForm.employmentFormat,
             contacts: {
               email: profileForm.contactEmail || undefined,
@@ -1321,18 +1325,11 @@ function DirectoryPage({ page, filters, setFilters, loadEmployees, employees, se
       <div className="jobs-layout seeker-layout">
         <form className="filters-panel" onSubmit={loadEmployees}>
           <h3>Фильтры</h3>
-          <Field id="query" label="Поиск по навыкам" value={filters.query} onChange={(value) => setFilters({ ...filters, query: value, skills: value })} placeholder="Frontend, React" />
+          <Field id="query" label="Поиск по специализации и навыкам" value={filters.query} onChange={(value) => setFilters({ ...filters, query: value })} placeholder="Frontend, React" />
+          <SpecializationSelect id="filterSpecialization" label="Специализация" value={filters.specialization} onChange={(value) => setFilters({ ...filters, specialization: value })} emptyLabel="Любая" />
           <Field id="location" label="Локация" value={filters.location} onChange={(value) => setFilters({ ...filters, location: value })} placeholder="Бишкек, Ош, удаленно" />
-          <div>
-            <label htmlFor="filterEmploymentFormat">Формат работы</label>
-            <select id="filterEmploymentFormat" value={filters.employmentFormat} onChange={(event) => setFilters({ ...filters, employmentFormat: event.target.value })}>
-              <option value="">Любой</option>
-              {Object.entries(employmentFormatLabels).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
-          </div>
-          <Field id="skills" label="Навыки" value={filters.skills} onChange={(value) => setFilters({ ...filters, skills: value, query: value })} placeholder="SQL, QA, Node.js" />
+          <DropdownSelect id="filterEmploymentFormat" label="Формат работы" value={filters.employmentFormat} onChange={(value) => setFilters({ ...filters, employmentFormat: value })} options={employmentFormatOptions} emptyLabel="Любой" allowClear />
+          <SkillMultiSelect id="skills" label="Навыки" value={filters.skills} onChange={(value) => setFilters({ ...filters, skills: value })} emptyLabel="Любые навыки" />
           <Field id="languages" label="Языки" value={filters.languages} onChange={(value) => setFilters({ ...filters, languages: value })} placeholder="русский, кыргызча" />
           <div className="filters-actions">
             <button className="button primary full" type="submit">Показать</button>
@@ -1516,6 +1513,8 @@ const profileSnapshot = ({ user, accountForm, profileForm, candidateProfile }) =
   savedName: (user?.name ?? "").trim(),
   headline: profileForm.headline.trim(),
   savedHeadline: (candidateProfile?.headline ?? "").trim(),
+  specialization: profileForm.specialization.trim(),
+  savedSpecialization: (candidateProfile?.specialization ?? "").trim(),
   summary: profileForm.summary.trim(),
   savedSummary: (candidateProfile?.summary ?? "").trim(),
   skills: toList(profileForm.skills),
@@ -1541,12 +1540,29 @@ const profileSnapshot = ({ user, accountForm, profileForm, candidateProfile }) =
 });
 
 const unavailableForWork = "Не ищу работу сейчас";
+const employmentFormatOptions = Object.entries(employmentFormatLabels).map(([value, label]) => ({ value, label }));
+
+function useDropdownOutsideClose(open, containerRef, close) {
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (!containerRef.current?.contains(event.target)) {
+        close();
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [close, containerRef, open]);
+}
 
 function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfileForm, profileLists, candidateProfile, saveProfile, uploadCv, profileViews, profileViewsLoaded, profileViewsLoading, loadProfileViews, downloadCandidateCv, openDeleteAccount, notice }) {
   const snapshot = profileSnapshot({ user, accountForm, profileForm, candidateProfile });
   const currentProfileState = {
     name: snapshot.name,
     headline: snapshot.headline,
+    specialization: snapshot.specialization,
     summary: snapshot.summary,
     skills: snapshot.skills,
     languages: snapshot.languages,
@@ -1562,6 +1578,7 @@ function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfil
   const savedProfileState = {
     name: snapshot.savedName,
     headline: snapshot.savedHeadline,
+    specialization: snapshot.savedSpecialization,
     summary: snapshot.savedSummary,
     skills: snapshot.savedSkills,
     languages: snapshot.savedLanguages,
@@ -1582,6 +1599,7 @@ function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfil
     user,
     ...candidateProfile,
     headline: profileForm.headline,
+    specialization: profileForm.specialization,
     location: profileForm.location,
     skills: profileLists.skills,
     languages: profileLists.languages,
@@ -1618,24 +1636,18 @@ function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfil
           <section className="edit-card">
             <h3>Профессиональный профиль</h3>
             <Field id="headline" label="Профессиональный заголовок" value={profileForm.headline} onChange={(value) => setProfileForm({ ...profileForm, headline: value })} placeholder="Например: Frontend разработчик" />
+            <SpecializationSelect id="specialization" label="Специализация" value={profileForm.specialization} onChange={(value) => setProfileForm({ ...profileForm, specialization: value })} emptyLabel="Искать специализации" actionLabel="Сохранить" />
             <TextField id="summary" label="Опыт и сильные стороны" value={profileForm.summary} onChange={(value) => setProfileForm({ ...profileForm, summary: value })} rows="5" />
-            <Field id="skills" label="Навыки через запятую" value={profileForm.skills} onChange={(value) => setProfileForm({ ...profileForm, skills: value })} />
+            <SkillMultiSelect id="skills" label="Навыки" value={profileForm.skills} onChange={(value) => setProfileForm({ ...profileForm, skills: value })} emptyLabel="Искать навыки" />
             <Field id="languages" label="Языки через запятую" value={profileForm.languages} onChange={(value) => setProfileForm({ ...profileForm, languages: value })} />
             <div className="field-pair">
               <Field id="location" label="Город" value={profileForm.location} onChange={(value) => setProfileForm({ ...profileForm, location: value })} placeholder="Бишкек, Ош, Нарын" />
-              <div>
-                <label htmlFor="employmentFormat">Формат работы</label>
-                <select id="employmentFormat" value={profileForm.employmentFormat} onChange={(event) => setProfileForm({ ...profileForm, employmentFormat: event.target.value })}>
-                  {Object.entries(employmentFormatLabels).map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
-                  ))}
-                </select>
-              </div>
+              <DropdownSelect id="employmentFormat" label="Формат работы" value={profileForm.employmentFormat} onChange={(value) => setProfileForm({ ...profileForm, employmentFormat: value || "remote" })} options={employmentFormatOptions} emptyLabel="Любой" />
             </div>
             <Field id="portfolio" label="Портфолио или ссылка на работы" value={profileForm.portfolio} onChange={(value) => setProfileForm({ ...profileForm, portfolio: value })} placeholder="https://..." />
             <Field id="contactEmail" label="Email для связи" type="email" value={profileForm.contactEmail} onChange={(value) => setProfileForm({ ...profileForm, contactEmail: value })} />
             <div className="field-pair">
-              <div>
+              <div className="form-field">
                 <label htmlFor="messengerType">Мессенджер</label>
                 <select id="messengerType" value={profileForm.messengerType} onChange={(event) => setProfileForm({ ...profileForm, messengerType: event.target.value })}>
                   <option value="telegram">Telegram</option>
@@ -1647,7 +1659,7 @@ function ProfilePage({ user, accountForm, setAccountForm, profileForm, setProfil
               </div>
             </div>
             <TextField id="accessibility" label="Условия доступности" value={profileForm.accessibilityPreferences} onChange={(value) => setProfileForm({ ...profileForm, accessibilityPreferences: value })} rows="4" />
-            <div>
+            <div className="form-field">
               <label htmlFor="availability">Статус поиска</label>
               <select id="availability" value={profileForm.availability} onChange={(event) => setProfileForm({ ...profileForm, availability: event.target.value })}>
                 {availabilityOptions.map((option) => (
@@ -1737,6 +1749,7 @@ function CandidateCard({ candidate, onClick, preview = false }) {
           </div>
         </div>
         <ul className="meta-list">
+          <li>Специализация: {candidate.specialization || "не указана"}</li>
           <li>{candidate.location || "Локация не указана"}</li>
           <li>Формат: {employmentFormatLabels[candidate.employmentFormat] ?? "Онлайн"}</li>
           <li>Навыки: {(candidate.skills ?? []).slice(0, 3).join(", ") || "не указаны"}</li>
@@ -1789,6 +1802,7 @@ function ProfileSummary({ profile, detailed = false, onDownloadCv }) {
     <section className={detailed ? "profile-card detailed" : "profile-card"}>
       <div className="profile-avatar">{(profile?.user?.name ?? "П").slice(0, 1)}</div>
       <h3>{profile?.headline || "Профиль соискателя"}</h3>
+      {profile?.specialization && <p className="profile-location">Специализация: {profile.specialization}</p>}
       {profile?.location && <p className="profile-location">{profile.location}</p>}
       {profile?.employmentFormat && <p className="profile-location">Формат работы: {employmentFormatLabels[profile.employmentFormat] ?? "Онлайн"}</p>}
       {profile?.availability && <p className="profile-location">Статус: {profile.availability}</p>}
@@ -1926,11 +1940,13 @@ function AuthPage({ authForm, authMode, authError, authLoading, authNotice, veri
             {isRegister && (
               <>
                 <Field id="name" label="Имя и фамилия" value={authForm.name} onChange={(value) => setAuthForm({ ...authForm, name: value })} required />
-                <label htmlFor="role">Роль</label>
-                <select id="role" value={authForm.role} onChange={(event) => setAuthForm({ ...authForm, role: event.target.value })}>
-                  <option value="candidate">Ищу подходящую работу</option>
-                  <option value="hiring_manager">Ищу сотрудника с ограниченными возможностями</option>
-                </select>
+                <div className="form-field">
+                  <label htmlFor="role">Роль</label>
+                  <select id="role" value={authForm.role} onChange={(event) => setAuthForm({ ...authForm, role: event.target.value })}>
+                    <option value="candidate">Ищу подходящую работу</option>
+                    <option value="hiring_manager">Ищу сотрудника с ограниченными возможностями</option>
+                  </select>
+                </div>
               </>
             )}
             <Field id="email" label="Email" type="email" value={authForm.email} onChange={(value) => setAuthForm({ ...authForm, email: value })} required />
@@ -1972,7 +1988,7 @@ function PasswordField({ id, label, value, onChange, showPassword, setShowPasswo
   };
 
   return (
-    <div className="password-field">
+    <div className="form-field password-field">
       <label htmlFor={id}>{label}</label>
       <div className="password-input-wrap">
         <input
@@ -2010,7 +2026,7 @@ function Field({ id, label, value, onChange, type = "text", className = "", ...p
   };
 
   return (
-    <div className={className}>
+    <div className={["form-field", className].filter(Boolean).join(" ")}>
       <label htmlFor={id}>{label}</label>
       <input
         id={id}
@@ -2025,9 +2041,259 @@ function Field({ id, label, value, onChange, type = "text", className = "", ...p
   );
 }
 
+function DropdownSelect({ id, label, value, onChange, options, emptyLabel, allowClear = false }) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef(null);
+  const selectedOption = options.find((option) => option.value === value);
+
+  useDropdownOutsideClose(open, containerRef, () => setOpen(false));
+
+  const selectOption = (nextValue) => {
+    onChange(nextValue);
+    setOpen(false);
+  };
+
+  const clearValue = () => {
+    onChange("");
+    setOpen(true);
+  };
+
+  return (
+    <div className="form-field picker-field" ref={containerRef}>
+      <label htmlFor={id}>{label}</label>
+      <div className="select-control">
+        <button id={id} className="select-display" type="button" onClick={() => setOpen((current) => !current)} aria-haspopup="listbox" aria-expanded={open}>
+          <span>{selectedOption?.label ?? emptyLabel}</span>
+          {(!allowClear || !value) && <span className="select-arrow" aria-hidden="true">▾</span>}
+        </button>
+        {allowClear && value && (
+          <button className="picker-clear inside" type="button" onMouseDown={(event) => { event.preventDefault(); event.stopPropagation(); }} onClick={clearValue} aria-label="Очистить формат работы">
+            ×
+          </button>
+        )}
+      </div>
+      {open && (
+        <div className="dropdown !shadow-boss" role="listbox" aria-labelledby={id}>
+          {allowClear && (
+            <button className={`option-item${value === "" ? " highlighted" : ""}`} type="button" onClick={() => selectOption("")}>
+              {emptyLabel}
+            </button>
+          )}
+          {options.map((option) => (
+            <button key={option.value} className={`option-item${option.value === value ? " highlighted" : ""}`} type="button" onClick={() => selectOption(option.value)}>
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SpecializationSelect({ id, label, value, onChange, emptyLabel, actionLabel }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState(value);
+  const [searching, setSearching] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(20);
+  const containerRef = useRef(null);
+  const dropdownRef = useRef(null);
+  const normalizedSearch = (searching ? search : "").trim().toLocaleLowerCase("ru-RU");
+  const filteredOptions = specializationOptions
+    .filter((option) => option.toLocaleLowerCase("ru-RU").includes(normalizedSearch));
+  const visibleOptions = filteredOptions.slice(0, visibleCount);
+
+  useEffect(() => {
+    if (open && dropdownRef.current) {
+      dropdownRef.current.scrollTop = 0;
+    }
+    setVisibleCount(20);
+  }, [open, normalizedSearch]);
+
+  useDropdownOutsideClose(open, containerRef, () => {
+    setSearch(value);
+    setSearching(false);
+    setOpen(false);
+  });
+
+  const loadMoreOnScroll = (event) => {
+    const dropdown = event.currentTarget;
+    if (dropdown.scrollTop + dropdown.clientHeight >= dropdown.scrollHeight - 24) {
+      setVisibleCount((count) => Math.min(count + 20, filteredOptions.length));
+    }
+  };
+
+  const selectOption = (option) => {
+    onChange(option);
+    setSearch(option);
+    setSearching(false);
+    setOpen(false);
+  };
+
+  const clearValue = () => {
+    onChange("");
+    setSearch("");
+    setSearching(false);
+    setOpen(true);
+  };
+
+  return (
+    <div className="form-field picker-field" ref={containerRef}>
+      <label htmlFor={id}>{label}</label>
+      <div className="single-select-control">
+        <input
+          id={id}
+          value={searching ? search : value}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            setSearching(true);
+            setOpen(true);
+          }}
+          onFocus={() => {
+            setSearch("");
+            setSearching(false);
+            setOpen(true);
+          }}
+          onClick={() => {
+            if (!searching) {
+              setSearch("");
+              setOpen(true);
+            }
+          }}
+          placeholder={emptyLabel}
+          autoComplete="off"
+        />
+        {value && (
+          <button className="picker-clear inside" type="button" onMouseDown={(event) => { event.preventDefault(); event.stopPropagation(); }} onClick={clearValue} aria-label="Очистить специализацию">
+            ×
+          </button>
+        )}
+      </div>
+      {open && (
+        <div className="dropdown !shadow-boss" ref={dropdownRef} onScroll={loadMoreOnScroll}>
+          {actionLabel && (
+            <button className="flex justify-between items-center option-item close-option" type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => selectOption(search.trim())} disabled={!search.trim()}>
+              <span className="text-[14px]">{actionLabel}</span>
+              <span className="text-[24px] font-bold">×</span>
+            </button>
+          )}
+          {visibleOptions.length > 0 ? (
+            visibleOptions.map((option) => (
+              <button key={option} className={`option-item${option === value ? " highlighted" : ""}`} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => selectOption(option)}>
+                {option}
+              </button>
+            ))
+          ) : (
+            <p className="picker-empty">Ничего не найдено</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SkillMultiSelect({ id, label, value, onChange, emptyLabel }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [visibleCount, setVisibleCount] = useState(20);
+  const containerRef = useRef(null);
+  const dropdownRef = useRef(null);
+  const selectedSkills = toList(value);
+  const selectedKeys = new Set(selectedSkills.map((skill) => skill.toLocaleLowerCase("ru-RU")));
+  const normalizedSearch = search.trim().toLocaleLowerCase("ru-RU");
+  const filteredOptions = skillOptions.filter((skill) => {
+    const normalizedSkill = skill.toLocaleLowerCase("ru-RU");
+    return !selectedKeys.has(normalizedSkill) && normalizedSkill.includes(normalizedSearch);
+  });
+  const visibleOptions = filteredOptions.slice(0, visibleCount);
+
+  useEffect(() => {
+    if (open && dropdownRef.current) {
+      dropdownRef.current.scrollTop = 0;
+    }
+    setVisibleCount(20);
+  }, [open, normalizedSearch, selectedSkills.length]);
+
+  useDropdownOutsideClose(open, containerRef, () => setOpen(false));
+
+  const loadMoreOnScroll = (event) => {
+    const dropdown = event.currentTarget;
+    if (dropdown.scrollTop + dropdown.clientHeight >= dropdown.scrollHeight - 24) {
+      setVisibleCount((count) => Math.min(count + 20, filteredOptions.length));
+    }
+  };
+
+  const updateSelected = (nextSkills) => {
+    onChange(nextSkills.join(", "));
+  };
+
+  const addSkill = (skill) => {
+    if (selectedKeys.has(skill.toLocaleLowerCase("ru-RU"))) return;
+    updateSelected([...selectedSkills, skill]);
+    setSearch("");
+    setOpen(true);
+  };
+
+  const removeSkill = (skill) => {
+    updateSelected(selectedSkills.filter((item) => item.toLocaleLowerCase("ru-RU") !== skill.toLocaleLowerCase("ru-RU")));
+  };
+
+  const clearSkills = () => {
+    updateSelected([]);
+    setSearch("");
+    setOpen(false);
+  };
+
+  return (
+    <div className="form-field picker-field skill-select" ref={containerRef}>
+      <label htmlFor={id}>{label}</label>
+      <div className="multi-select-control" onMouseDown={() => setOpen(true)}>
+        {selectedSkills.length > 0 && (
+          <ul className="selected-skill-list" aria-label="Выбранные навыки">
+            {selectedSkills.map((skill) => (
+              <li key={skill}>
+                <span>{skill}</span>
+                <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => removeSkill(skill)} aria-label={`Удалить навык ${skill}`} />
+              </li>
+            ))}
+          </ul>
+        )}
+        <input
+          id={id}
+          value={search}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          placeholder={selectedSkills.length > 0 ? "" : emptyLabel}
+          autoComplete="off"
+        />
+        {selectedSkills.length > 0 && (
+          <button className="picker-clear inside" type="button" onMouseDown={(event) => { event.preventDefault(); event.stopPropagation(); }} onClick={clearSkills} aria-label="Очистить навыки">
+            ×
+          </button>
+        )}
+      </div>
+      {open && (
+        <div className="dropdown !shadow-boss" ref={dropdownRef} onScroll={loadMoreOnScroll}>
+          {visibleOptions.length > 0 ? (
+            visibleOptions.map((skill) => (
+              <button key={skill} className="option-item" type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => addSkill(skill)}>
+                {skill}
+              </button>
+            ))
+          ) : (
+            <p className="picker-empty">Ничего не найдено</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TextField({ id, label, value, onChange, rows = "4", className = "" }) {
   return (
-    <div className={className}>
+    <div className={["form-field", className].filter(Boolean).join(" ")}>
       <label htmlFor={id}>{label}</label>
       <textarea id={id} value={value} rows={rows} onChange={(event) => onChange(event.target.value)} />
     </div>

@@ -87,9 +87,20 @@ textarea {
   border-radius: 12px;
   background: #ffffff;
   color: #1c2430;
-  margin-bottom: 1rem;
   min-height: 46px;
   padding: 0.78rem 0.9rem;
+}
+
+.form-field {
+  display: grid;
+  gap: 0.38rem;
+}
+
+.form-field label,
+.form-field input,
+.form-field select,
+.form-field textarea {
+  margin-bottom: 0;
 }
 
 select {
@@ -641,13 +652,249 @@ main {
   margin-bottom: 0.2rem;
 }
 
-.filters-panel input {
-  margin-bottom: 0;
-}
-
 .filters-actions {
   display: grid;
   gap: 0.6rem;
+}
+
+.picker-field {
+  position: relative;
+}
+
+.picker-clear {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: #7a756d;
+  display: inline-flex;
+  font-size: 1.25rem;
+  font-weight: 900;
+  height: 1.4rem;
+  justify-content: center;
+  padding: 0;
+  width: 1.4rem;
+}
+
+.picker-clear.inside {
+  align-self: center;
+  flex: 0 0 auto;
+  font-size: 1.4rem;
+  height: 2rem;
+  line-height: 1;
+  margin-left: auto;
+  width: 2rem;
+}
+
+.picker-clear:hover {
+  color: #245d57;
+}
+
+.single-select-control,
+.select-control {
+  position: relative;
+}
+
+.single-select-control input {
+  padding-right: 2.7rem;
+}
+
+.single-select-control .picker-clear.inside {
+  bottom: 0;
+  margin: auto 0;
+  position: absolute;
+  right: 0.45rem;
+  top: 0;
+}
+
+.select-control {
+  background: #fff;
+  border: 1px solid #d8d2c8;
+  border-radius: 8px;
+  min-height: 3rem;
+}
+
+.select-control:focus-within {
+  border-color: #da9d17;
+  box-shadow: 0 0 0 3px rgb(218 157 23 / 18%);
+}
+
+.select-display {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: #202936;
+  display: flex;
+  font: inherit;
+  font-weight: 700;
+  justify-content: space-between;
+  min-height: calc(3rem - 2px);
+  padding: 0.65rem 2.7rem 0.65rem 0.85rem;
+  text-align: left;
+  width: 100%;
+}
+
+.select-arrow {
+  color: #3d4650;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.select-control .picker-clear.inside {
+  bottom: 0;
+  margin: auto 0;
+  position: absolute;
+  right: 0.45rem;
+  top: 0;
+}
+
+.dropdown {
+  background: #ffffff;
+  border: 2px solid #d7d0c4;
+  border-radius: 8px;
+  display: grid;
+  max-height: 17rem;
+  overflow: auto;
+  padding: 0.35rem 0;
+  position: static;
+  margin-top: 0.35rem;
+  width: 100%;
+  z-index: 30;
+}
+
+.shadow-boss,
+.\!shadow-boss {
+  box-shadow: 0 14px 28px rgb(28 36 48 / 16%);
+}
+
+.option-item {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: #202936;
+  font-size: 0.92rem;
+  font-weight: 800;
+  line-height: 1.25;
+  padding: 0.65rem 0.85rem;
+  text-align: left;
+}
+
+.close-option {
+  align-items: center;
+  border-bottom: 1px solid #ece8df;
+  color: #7a756d;
+  display: flex;
+  justify-content: space-between;
+}
+
+.close-option span:last-child {
+  font-size: 1.5rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.close-option:disabled {
+  opacity: 0.45;
+}
+
+.option-item:hover,
+.option-item.highlighted,
+.close-option:hover:not(:disabled) {
+  background: #f6f6f3;
+}
+
+.picker-empty {
+  color: #7a756d;
+  font-size: 0.92rem;
+  margin: 0;
+  padding: 0.65rem 0.85rem;
+}
+
+.multi-select-control {
+  align-items: flex-start;
+  background: #fff;
+  border: 1px solid #d8d2c8;
+  border-radius: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  min-height: 3rem;
+  padding: 0.4rem 2.7rem 0.4rem 0.55rem;
+  position: relative;
+}
+
+.multi-select-control .picker-clear.inside {
+  bottom: 0;
+  margin: auto 0;
+  position: absolute;
+  right: 0.45rem;
+  top: 0;
+}
+
+.multi-select-control:focus-within {
+  border-color: #da9d17;
+  box-shadow: 0 0 0 3px rgb(218 157 23 / 18%);
+}
+
+.multi-select-control input {
+  border: 0;
+  box-shadow: none;
+  flex: 1 1 8rem;
+  height: 2rem;
+  min-width: 7rem;
+  padding: 0.25rem;
+}
+
+.multi-select-control input:focus {
+  box-shadow: none;
+  outline: none;
+}
+
+.selected-skill-list {
+  display: contents;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.selected-skill-list li {
+  align-items: center;
+  background: #e9f1ec;
+  border: 1px solid #b7d0c7;
+  border-radius: 999px;
+  color: #245d57;
+  display: inline-flex;
+  font-size: 0.82rem;
+  font-weight: 800;
+  gap: 0.35rem;
+  line-height: 1.2;
+  max-width: 100%;
+  padding: 0.3rem 0.38rem 0.3rem 0.58rem;
+}
+
+.selected-skill-list span {
+  overflow-wrap: anywhere;
+}
+
+.selected-skill-list button {
+  background: transparent;
+  border: 0;
+  color: #245d57;
+  display: grid;
+  font-size: 0;
+  font-weight: 900;
+  height: 1.25rem;
+  line-height: 1;
+  place-items: center;
+  padding: 0;
+  width: 1.25rem;
+}
+
+.selected-skill-list button::before {
+  content: "×";
+  display: block;
+  font-size: 1.05rem;
+  line-height: 1;
+  transform: translateY(-0.02rem);
 }
 
 .recruiter-panel {
@@ -833,6 +1080,11 @@ main {
   border-radius: 16px;
   box-shadow: 0 10px 28px rgb(28 36 48 / 5%);
   padding: 1.15rem;
+}
+
+.edit-card {
+  display: grid;
+  gap: 1rem;
 }
 
 .profile-side .edit-card {
@@ -1297,19 +1549,13 @@ main {
   color: #1c2430;
 }
 
-.password-field {
-  display: grid;
-  gap: 0.38rem;
-  margin-bottom: 1rem;
-}
-
-.password-field label,
-.password-field input {
-  margin-bottom: 0;
-}
-
 .password-input-wrap {
   position: relative;
+}
+
+.auth-page-card form {
+  display: grid;
+  gap: 1rem;
 }
 
 .password-input-wrap input {

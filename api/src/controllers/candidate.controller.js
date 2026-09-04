@@ -22,6 +22,7 @@ const profilePayload = (profile) => ({
   id: profile.id,
   user: profile.user,
   headline: profile.headline,
+  specialization: profile.specialization,
   summary: profile.summary,
   skills: profile.skills,
   languages: profile.languages,
@@ -54,6 +55,7 @@ const uniqueTokens = (...values) => {
 const searchableText = (profile) => [
   profile.user?.name,
   profile.headline,
+  profile.specialization,
   profile.summary,
   profile.location,
   profile.portfolio,
@@ -89,6 +91,7 @@ export const listCandidates = async (req, res) => {
   };
   const location = String(req.query.location ?? "").trim();
   const employmentFormat = String(req.query.employmentFormat ?? "").trim();
+  const specializationTokens = uniqueTokens(req.query.specialization);
   const searchTokens = uniqueTokens(req.query.query, req.query.skills);
   const languageTokens = uniqueTokens(req.query.languages);
 
@@ -107,13 +110,15 @@ export const listCandidates = async (req, res) => {
   const scoredProfiles = profiles
     .map((profile) => {
       const searchScore = scoreTokens(profile, searchTokens);
+      const specializationScore = scoreTokens(profile, specializationTokens);
       const languageScore = scoreTokens(profile, languageTokens);
       return {
         profile,
-        score: searchScore + languageScore
+        score: searchScore + specializationScore + languageScore
       };
     })
     .filter(({ profile }) => {
+      if (specializationTokens.length > 0 && scoreTokens(profile, specializationTokens) < 0) return false;
       if (searchTokens.length > 0 && scoreTokens(profile, searchTokens) < 0) return false;
       if (languageTokens.length > 0 && scoreTokens(profile, languageTokens) < 0) return false;
       return true;
@@ -181,6 +186,7 @@ export const upsertMyCandidateProfile = async (req, res) => {
     {
       $set: {
         headline: req.body.headline,
+        specialization: req.body.specialization,
         summary: req.body.summary,
         skills: req.body.skills,
         languages: req.body.languages,

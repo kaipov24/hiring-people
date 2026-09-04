@@ -14,6 +14,12 @@ const candidateProfileSchema = new mongoose.Schema(
       trim: true,
       maxlength: 160
     },
+    specialization: {
+      type: String,
+      trim: true,
+      maxlength: 120,
+      index: true
+    },
     summary: {
       type: String,
       trim: true,
@@ -94,6 +100,7 @@ const candidateProfileSchema = new mongoose.Schema(
 
 candidateProfileSchema.index({
   headline: "text",
+  specialization: "text",
   summary: "text",
   skills: "text",
   languages: "text",

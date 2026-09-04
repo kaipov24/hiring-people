@@ -3,6 +3,17 @@ set -eu
 
 tail_lines="${TAIL:-200}"
 follow="${FOLLOW:-true}"
+script_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+repo_root="$script_dir"
+
+while [ "$repo_root" != "/" ] && [ ! -f "$repo_root/compose.yaml" ]; do
+  repo_root="$(dirname "$repo_root")"
+done
+
+if [ ! -f "$repo_root/compose.yaml" ]; then
+  echo "Could not find compose.yaml. Run this from inside the inclusive-hire repo." >&2
+  exit 1
+fi
 
 usage() {
   cat <<'EOF'
@@ -43,6 +54,8 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
+cd "$repo_root"
+
 compose_files="-f compose.yaml"
 if [ -f compose.homelab.yaml ]; then
   compose_files="$compose_files -f compose.homelab.yaml"
@@ -56,15 +69,24 @@ fi
 pattern='(\[audit\]|Failed to send verification email|Failed to send password reset email|request POST /api/auth/(register|login)|request PATCH /api/auth/me|request PUT /api/candidates/me|request POST /api/candidates/me/cv)'
 
 # shellcheck disable=SC2086
+docker compose $compose_files ps api >/dev/null
+
+# shellcheck disable=SC2086
 set +e
 docker compose $compose_files logs $logs_args api \
-  | grep --line-buffered -E "$pattern"
+  | awk -v pattern="$pattern" -v follow="$follow" -v tail_lines="$tail_lines" '
+      $0 ~ pattern {
+        print
+        fflush()
+        found = 1
+      }
+      END {
+        if (!found && follow != "true") {
+          print "No matching app events found in the last " tail_lines " API log lines."
+        }
+      }
+    '
 status="$?"
 set -e
-
-if [ "$status" -eq 1 ] && [ "$follow" != "true" ]; then
-  echo "No matching app events found in the last $tail_lines API log lines."
-  exit 0
-fi
 
 exit "$status"
