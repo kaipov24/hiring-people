@@ -409,6 +409,17 @@ main {
   max-width: 60ch;
 }
 
+.seo-copy {
+  color: #3d4650;
+  display: grid;
+  gap: 0.7rem;
+  max-width: 58rem;
+}
+
+.seo-copy p {
+  margin: 0;
+}
+
 .public-section,
 .jobs-page,
 .profile-page,

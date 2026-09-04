@@ -7,9 +7,11 @@ export const YEAR = new Date().getFullYear();
 export const SESSION_STORAGE_KEY = "inclusive-hire-session";
 export const VISITOR_STORAGE_KEY = "inclusive-hire-visitor";
 
+export const publicSeoDescription = "inclusive-hire — платформа в Кыргызстане, где люди с инвалидностью могут опубликовать резюме, а рекрутеры и работодатели находят сотрудников с инвалидностью по навыкам, специализации, городу и формату работы.";
+
 export const publicSeo = {
-  title: "Найм людей с инвалидностью в Кыргызстане | inclusive-hire",
-  description: "inclusive-hire Кыргызстан — некоммерческая платформа инклюзивного найма: работодатели могут нанять человека с инвалидностью, соискатели загружают резюме и показывают навыки.",
+  title: "Найти сотрудника с инвалидностью в Кыргызстане | inclusive-hire",
+  description: publicSeoDescription,
   robots: IS_LANDING ? "index,follow,max-image-preview:large" : "noindex,nofollow",
   canonicalPath: "/"
 };
