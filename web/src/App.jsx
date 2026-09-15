@@ -1087,7 +1087,7 @@ function Hero({ user, isCandidate, isManager, isAdmin, page, showAuth, setPage, 
             </div>
             {IS_LANDING && appHealth === "offline" && (
               <p className="hero-offline-note">
-                Сервер сейчас офлайн, потому что DevOps спит. Попробуйте зайти снова с 09:00 до 23:00 UTC+6.
+                Сервер сейчас офлайн. Попробуйте зайти снова с 09:00 до 23:00 UTC+6.
               </p>
             )}
           </>
